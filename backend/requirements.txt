@@ -10,3 +10,4 @@ gunicorn==21.2.0
 bcrypt==4.1.2
 requests==2.31.0
 flask-bcrypt==1.0.1
+google-cloud-texttospeech==2.14.1

@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, ExternalLink, Bookmark, BookmarkCheck, FileText, Globe, Loader2, BookOpen, Trash2, ArrowLeft } from 'lucide-react';
 import { db } from '../services/mockDatabase';
-import { searchStudyResources, ResearchResult } from '../services/geminiService';
+import { searchStudyResources, findResources, ResearchResult } from '../services/geminiService';
 import { StudyResource } from '../types';
 
 interface ResourceCardProps {
@@ -13,7 +13,18 @@ interface ResourceCardProps {
   isSaved?: boolean;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, savedMode = false, onSave, onRemove, isSaved = false }) => (
+const ResourceCard: React.FC<ResourceCardProps> = ({ resource, savedMode = false, onSave, onRemove, isSaved = false }) => {
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+
+  const handleListen = async () => {
+    setIsGeneratingAudio(true);
+    const audioUrl = await getAudioOverview(resource.title);
+    setAudioUrl(audioUrl);
+    setIsGeneratingAudio(false);
+  };
+
+  return (
   <div className="bg-white p-4 rounded-xl border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between group">
     <div>
       <div className="flex justify-between items-start mb-2">
@@ -51,8 +62,19 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, savedMode = false
       <span>{resource.type === 'PDF' ? 'Download PDF' : 'Visit Website'}</span>
       <ExternalLink className="w-3 h-3" />
     </a>
+    <button
+      onClick={handleListen}
+      disabled={isGeneratingAudio}
+      className="mt-2 w-full flex items-center justify-center space-x-2 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+    >
+      {isGeneratingAudio ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Listen</span>}
+    </button>
+    {audioUrl && (
+      <audio controls src={audioUrl} className="w-full mt-2" />
+    )}
   </div>
 );
+}
 
 interface StudyMaterialProps {
   onBack?: () => void;
@@ -77,13 +99,46 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
     setIsSearching(true);
     setResult(null);
     try {
-      const data = await searchStudyResources(query);
-      setResult(data);
+      const initialResult = await searchStudyResources(query);
+      if (initialResult.search_terms && initialResult.search_terms.length > 0) {
+        const resources = await findResources(initialResult.search_terms[0]);
+        setResult({ ...initialResult, resources });
+      } else {
+        setResult(initialResult);
+      }
     } catch (e) {
       console.error(e);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleFoundResources = async (initialResult: ResearchResult) => {
+    const resources: StudyResource[] = [
+      {
+        id: '1',
+        title: 'Python Basic Syntax - W3Schools',
+        type: 'WEBSITE',
+        uri: 'https://www.w3schools.com/python/python_syntax.asp',
+        source: 'W3Schools',
+      },
+      {
+        id: '2',
+        title: 'Python Syntax and Semantics - Real Python',
+        type: 'WEBSITE',
+        uri: 'https://realpython.com/python-basics/',
+        source: 'Real Python',
+      },
+      {
+        id: '3',
+        title: 'Python Basic Syntax - Tutorialspoint',
+        type: 'PDF',
+        uri: 'https://www.tutorialspoint.com/python/python_basic_syntax.htm',
+        source: 'Tutorialspoint',
+      },
+    ];
+
+    setResult({ ...initialResult, resources });
   };
 
   const handleSave = (res: StudyResource) => {

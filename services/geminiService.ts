@@ -54,27 +54,29 @@ export const generateChatTitle = async (message: string): Promise<string> => {
   }
 };
 
-export const getSpeechForText = async (text: string, voiceName: string = 'Kore'): Promise<Uint8Array | null> => {
+export const getAudioOverview = async (text: string): Promise<string> => {
     try {
         const response = await fetch(`${API_URL}/text-to-speech`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ text, voiceName }),
+            body: JSON.stringify({ text }),
         });
         if (!response.ok) throw new Error('Network response was not ok');
-        const audioBlob = await response.blob();
-        return new Uint8Array(await audioBlob.arrayBuffer());
+        const data = await response.json();
+        const audioBlob = new Blob([new Uint8Array(atob(data.audio_content).split('').map(char => char.charCodeAt(0)))], { type: 'audio/mpeg' });
+        return URL.createObjectURL(audioBlob);
     } catch (e) {
         console.error("TTS Error", e);
-        return null;
+        return '';
     }
 };
 
 export interface ResearchResult {
   summary: string;
   resources: StudyResource[];
+  search_terms: string[];
 }
 
 export const searchStudyResources = async (query: string): Promise<ResearchResult> => {
@@ -87,12 +89,14 @@ export const searchStudyResources = async (query: string): Promise<ResearchResul
             body: JSON.stringify({ query }),
         });
         if (!response.ok) throw new Error('Network response was not ok');
-        return await response.json();
+        const data = await response.json();
+        return { ...data, resources: [] }; // Return the summary and search_terms, with an empty resources array.
     } catch (error) {
         console.error("Research Error:", error);
         return { 
             summary: "Sorry, I couldn't connect to the research database at the moment.", 
-            resources: [] 
+            resources: [],
+            search_terms: []
         };
     }
 };
@@ -128,9 +132,19 @@ export const transcribeAudio = async (audioBase64: string, mimeType: string = 'a
         return data.text || "No transcription available.";
     } catch (error) {
         console.error("Transcription error:", error);
-        throw error;
     }
 };
+
+export const findResources = async (searchTerm: string): Promise<StudyResource[]> => {
+    const searchResults = await window.google.search(searchTerm);
+    return searchResults.map((result: any, index: number) => ({
+        id: `${index}`,
+        title: result.title,
+        type: result.mimeType === 'application/pdf' ? 'PDF' : 'WEBSITE',
+        uri: result.link,
+        source: result.displayLink,
+    }));
+}
 
 export const analyzeAndFixCode = async (imageBase64: string, language: string): Promise<{ fixedCode: string, explanation: string }> => {
   try {
@@ -150,4 +164,21 @@ export const analyzeAndFixCode = async (imageBase64: string, language: string): 
         explanation: "Could not connect to the AI to analyze the code. Please check your network and the backend server." 
     };
   }
+};
+
+export const analyzeExamTrends = async (topic: string): Promise<PredictedQuestion[]> => {
+    try {
+        const response = await fetch(`${API_URL}/analyze-exam-trends`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ topic }),
+        });
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error("Exam trend analysis error:", error);
+        return [];
+    }
 };

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from ..extensions import db
 import google.generativeai as genai
+from google.cloud import texttospeech
 import os
 import uuid
 from urllib.parse import urlparse
@@ -114,11 +115,74 @@ def generate_chat_title():
 
 @bp.route('/text-to-speech', methods=['POST'])
 def text_to_speech():
-    return jsonify({"error": "AI service is currently unavailable"}), 503
+    data = request.get_json()
+    text = data.get('text')
+
+    if not text:
+        return jsonify({"error": "Missing text"}), 400
+
+    try:
+        client = texttospeech.TextToSpeechClient()
+
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-US",
+            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        )
+
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3
+        )
+
+        response = client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
+
+        return jsonify({"audio_content": response.audio_content})
+
+    except Exception as e:
+        print(f"An error occurred during text-to-speech conversion: {e}")
+        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
 
 @bp.route('/search-resources', methods=['POST'])
 def search_study_resources():
-    return jsonify({'summary': 'AI service is currently unavailable.', 'resources': []})
+    data = request.get_json()
+    query = data.get('query')
+
+    if not query:
+        return jsonify({"error": "Missing query"}), 400
+
+    try:
+        model = genai.GenerativeModel('gemini-2.5-pro')
+        
+        prompt = f"""
+        Based on the user's query: "{query}", provide a concise, one-paragraph summary of the topic.
+        Then, provide a list of 3-5 high-quality search terms that can be used to find relevant PDF documents and web links.
+
+        You MUST respond in a single valid JSON object with the following schema:
+        {{
+            "summary": "The concise summary of the topic.",
+            "search_terms": ["search term 1", "search term 2", "search term 3"]
+        }}
+        """
+        
+        response = model.generate_content(prompt)
+        
+        text_to_parse = response.text
+        if text_to_parse.startswith("```json"):
+            text_to_parse = text_to_parse[7:]
+        if text_to_parse.endswith("```"):
+            text_to_parse = text_to_parse[:-3]
+            
+        response_json = json.loads(text_to_parse)
+
+        # The agent will use these search terms to find resources.
+        return jsonify({'summary': response_json['summary'], 'search_terms': response_json['search_terms']})
+
+    except Exception as e:
+        print(f"An error occurred during resource search: {e}")
+        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
 
 @bp.route('/generate-quiz', methods=['POST'])
 def generate_quiz_questions():
@@ -184,4 +248,54 @@ def analyze_code():
 
     except Exception as e:
         print(f"An error occurred during code analysis: {e}")
+        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
+
+@bp.route('/analyze-exam-trends', methods=['POST'])
+def analyze_exam_trends():
+    data = request.get_json()
+    topic = data.get('topic')
+
+    if not topic:
+        return jsonify({"error": "Missing topic"}), 400
+
+    try:
+        model = genai.GenerativeModel('gemini-2.5-pro')
+        
+        prompt = f"""
+        Based on the topic "{topic}", predict 3-5 high-probability exam questions.
+        For each question, provide the probability ('HIGH', 'MEDIUM', 'LOW'), a list of years it has appeared in exams, the marks it is likely to carry, and a tip for answering it.
+
+        You MUST respond in a single valid JSON object with the following schema:
+        {{
+            "questions": [
+                {{
+                    "id": "a unique id",
+                    "question": "The predicted question.",
+                    "probability": "HIGH" | "MEDIUM" | "LOW",
+                    "yearsAppeared": ["year1", "year2"],
+                    "marks": "5",
+                    "tips": "A tip for answering the question."
+                }}
+            ]
+        }}
+        """
+        
+        response = model.generate_content(prompt)
+        
+        text_to_parse = response.text
+        if text_to_parse.startswith("```json"):
+            text_to_parse = text_to_parse[7:]
+        if text_to_parse.endswith("```"):
+            text_to_parse = text_to_parse[:-3]
+            
+        response_json = json.loads(text_to_parse)
+        
+        # Add unique IDs to the questions
+        for i, q in enumerate(response_json['questions']):
+            q['id'] = f'pred_{i+1}'
+
+        return jsonify(response_json['questions'])
+
+    except Exception as e:
+        print(f"An error occurred during exam trend analysis: {e}")
         return jsonify({"error": "An unexpected error occurred with the AI service."}), 500

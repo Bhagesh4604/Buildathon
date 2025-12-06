@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Globe, Bell, Volume2, Square, StopCircle, Plus, MessageSquare, ChevronLeft, Menu, PanelLeftClose, PanelLeftOpen, Paperclip, Mic, X, Image as ImageIcon, FileText } from 'lucide-react';
-import { getSocraticResponse, getSpeechForText, generateChatTitle, transcribeAudio } from '../services/geminiService';
+import { getSocraticResponse, getAudioOverview, generateChatTitle, transcribeAudio } from '../services/geminiService';
 import { db } from '../services/mockDatabase';
 import { Message, UserRole, Sentiment, SupportedLanguage, TeacherMessage, ChatConversation, Attachment } from '../types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -263,35 +263,14 @@ export const StudentChat: React.FC = () => {
     setPlayingMessageId(msgId);
     
     try {
-      const audioBytes = await getSpeechForText(text, currentStudent.preferredVoice || 'Kore');
+      const audioUrl = await getAudioOverview(text);
       
-      if (audioBytes) {
-        if (audioContextRef.current) {
-          await audioContextRef.current.close();
-        }
-
-        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-        audioContextRef.current = new AudioContextClass({ sampleRate: 24000 });
-        
-        const ctx = audioContextRef.current;
-        if(ctx.state === 'suspended') await ctx.resume();
-
-        const dataInt16 = new Int16Array(audioBytes.buffer);
-        const float32 = new Float32Array(dataInt16.length);
-        for(let i=0; i<dataInt16.length; i++) {
-           float32[i] = dataInt16[i] / 32768.0;
-        }
-
-        const buffer = ctx.createBuffer(1, float32.length, 24000);
-        buffer.getChannelData(0).set(float32);
-
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.onended = () => {
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.play();
+        audio.onended = () => {
           setPlayingMessageId(null);
         };
-        source.start();
       } else {
         setPlayingMessageId(null);
       }

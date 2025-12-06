@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserRole } from '../types';
-import { apiLogin, getProfile } from '../services/api';
+import { apiLogin, getProfile, apiRegister } from '../services/api';
 import { GraduationCap, LayoutDashboard, ArrowRight, Loader2, BookOpen } from 'lucide-react';
 import { NeonOrbs } from './NeonOrbs';
 import { TextShimmer } from './TextShimmer';
@@ -23,23 +23,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
   const [subject, setSubject] = useState(''); // For Teacher
 
     const handleSignUp = async (e: React.FormEvent) => {
-
       e.preventDefault();
-
       setError(null);
-
       setIsLoading(true);
-
   
-
-      // In a real application, you would send a request to your backend here
-
-      // to create a new user. For this example, we'll just log the data.
-
-      console.log({ name, email, password, role });
-
+      try {
+        await apiRegister(name, email, password);
+        setIsSignUp(false); // Switch to sign-in form on success
+      } catch (error) {
+        setError(error.message);
+      }
+  
       setIsLoading(false);
-
     };
 
   
@@ -197,7 +192,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
                 <button 
 
                   onClick={() => handleRoleChange(UserRole.STUDENT)}
-
                   className={`px-3 py-1 text-xs font-bold rounded-md transition-all flex items-center space-x-1 ${role === UserRole.STUDENT ? 'bg-white text-indigo-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
 
                 >
@@ -211,7 +205,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
                 <button 
 
                   onClick={() => handleRoleChange(UserRole.TEACHER)}
-
                   className={`px-3 py-1 text-xs font-bold rounded-md transition-all flex items-center space-x-1 ${role === UserRole.TEACHER ? 'bg-white text-purple-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
 
                 >
@@ -418,4 +411,4 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
 
     );
 
-  
+};
