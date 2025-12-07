@@ -25,8 +25,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           login(user, user.role);
         })
         .catch(() => {
-          // Token is invalid or expired, so remove it
-          localStorage.removeItem('token');
+          // Token is invalid or expired, so log the user out
+          logout();
         });
     }
   }, []);
