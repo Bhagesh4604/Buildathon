@@ -10,3 +10,4 @@ from .transcript_item import TranscriptItem
 from .quiz_attempt import QuizAttempt
 from .quiz_question import QuizQuestion
 from .feedback import InterventionFlag, AIDecisionLog, TeacherMessage
+from .visual import Visual
