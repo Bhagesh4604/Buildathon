@@ -8,7 +8,7 @@ def create_app():
     app = Flask(__name__, static_folder='../dist', static_url_path='/')
     app.config.from_object('backend.config.Config')
 
-    CORS(app, origins=["https://buildathon-b32a.onrender.com"])
+    CORS(app, origins="*")
 
     db.init_app(app)
     migrate.init_app(app, db)
