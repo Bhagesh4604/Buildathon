@@ -1,1 +1,1 @@
-web: gunicorn --workers 1 --worker-class gthread "backend:create_app()"
+web: bash run.sh
