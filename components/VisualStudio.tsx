@@ -7,7 +7,10 @@ import { MindmapData, InfographicData, StoredVisual } from '@/types';
 import { Network, FileImage, Loader2, Sparkles, Wand2, FolderOpen, Save, Trash2, X, Clock, Upload, FileText, Image as ImageIcon, Link as LinkIcon, PanelLeftClose, PanelLeftOpen, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+import { useAuth } from './AuthContext';
+
 export const VisualStudio: React.FC = () => {
+  const { user } = useAuth();
   const [mode, setMode] = useState<'mindmap' | 'infographic'>('mindmap');
   const [inputMode, setInputMode] = useState<'text' | 'file'>('text');
   
@@ -26,16 +29,23 @@ export const VisualStudio: React.FC = () => {
   // Library State
   const [showLibrary, setShowLibrary] = useState(false);
   const [savedItems, setSavedItems] = useState<StoredVisual[]>([]);
-  const student = db.getCurrentStudent();
+  const [_, setDbVersion] = useState(0); // To force re-render on db change
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const unsubscribe = db.subscribe(() => {
+      setDbVersion(v => v + 1); // Increment to trigger re-render
+    });
+    return unsubscribe;
+  }, []);
 
   // Load saved items on mount or when sidebar opens
   useEffect(() => {
     if (showLibrary) {
-      setSavedItems(db.getVisuals(student.id));
+      setSavedItems(db.getVisuals(user.id));
     }
-  }, [showLibrary, student.id]);
+  }, [showLibrary, user.id, _]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -62,8 +72,6 @@ export const VisualStudio: React.FC = () => {
     if (!hasText && !hasFile) return;
     
     setIsGenerating(true);
-    // Don't clear data immediately to prevent flash, only if successful? 
-    // Actually clear it to show loading state cleanly in main area
     setMindmapData(null);
     setInfographicData(null);
 
@@ -71,10 +79,8 @@ export const VisualStudio: React.FC = () => {
       let prompt = textInput;
       let imageBase64: string | undefined = undefined;
 
-      // Process File if exists
       if (uploadedFile) {
         if (uploadedFile.type.startsWith('image/')) {
-           // Convert image to base64
            imageBase64 = await new Promise<string>((resolve) => {
              const reader = new FileReader();
              reader.onloadend = () => {
@@ -86,7 +92,6 @@ export const VisualStudio: React.FC = () => {
            
            if (!prompt) prompt = "Analyze this image and generate the visual representation.";
         } else if (uploadedFile.type === 'text/plain' || uploadedFile.name.endsWith('.md')) {
-           // Read text file
            const textContent = await new Promise<string>((resolve) => {
              const reader = new FileReader();
              reader.onload = (ev) => resolve(ev.target?.result as string);
@@ -103,7 +108,6 @@ export const VisualStudio: React.FC = () => {
         const data = await generateInfographic(prompt, imageBase64);
         setInfographicData(data);
       }
-      // Close sidebar on success to show result
       if (window.innerWidth < 1024) setSidebarOpen(false);
     } catch (e) {
       console.error(e);
@@ -126,7 +130,7 @@ export const VisualStudio: React.FC = () => {
       createdAt: Date.now()
     };
     
-    db.saveVisual(student.id, newVisual);
+    db.saveVisual(user.id, newVisual);
     alert('Saved to Library!');
   };
 
@@ -145,8 +149,7 @@ export const VisualStudio: React.FC = () => {
   const handleDeleteVisual = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this?")) {
-      db.removeVisual(student.id, id);
-      setSavedItems(prev => prev.filter(item => item.id !== id));
+      db.removeVisual(user.id, id);
     }
   };
 
@@ -328,7 +331,7 @@ export const VisualStudio: React.FC = () => {
             )}
 
             {mode === 'mindmap' && mindmapData && (
-              <div className="w-full h-full">
+              <div className="w-full h-full min-h-0">
                  <MindmapView data={mindmapData} />
               </div>
             )}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Download, ExternalLink, Bookmark, BookmarkCheck, FileText, Globe, Loader2, BookOpen, Trash2, ArrowLeft, TrendingUp, Sparkles, GraduationCap, AlertCircle } from 'lucide-react';
 import { db } from '../services/mockDatabase';
-import { searchStudyResources, ResearchResult, analyzeExamTrends } from '../services/geminiService';
+import { searchStudyResources, ResearchResult, analyzeExamTrends, findResources } from '../services/geminiService';
 import { StudyResource, PredictedQuestion } from '../types';
 
 interface ResourceCardProps {
@@ -81,16 +81,10 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
     setIsSearching(true);
     setResult(null);
     try {
-      const initialResult = await searchStudyResources(query);
-      if (initialResult.search_terms && initialResult.search_terms.length > 0) {
-        // Fetch actual resources using the first search term
-        const resources = await findResources(initialResult.search_terms[0]);
-        setResult({ ...initialResult, resources });
-      } else {
-        setResult(initialResult);
-      }
+      const data = await searchStudyResources(query);
+      setResult(data);
     } catch (e) {
-      console.error(e);
+      console.error("Search failed:", e);
     } finally {
       setIsSearching(false);
     }

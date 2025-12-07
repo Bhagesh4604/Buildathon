@@ -2,9 +2,9 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Bot, User, Loader2, Globe, Bell, Volume2, Square, StopCircle, Plus, MessageSquare, ChevronLeft, Menu, PanelLeftClose, PanelLeftOpen, Paperclip, Mic, X, Image as ImageIcon, FileText } from 'lucide-react';
-import { getSocraticResponse, getAudioOverview, generateChatTitle, transcribeAudio } from '../services/geminiService';
-import { db } from '../services/mockDatabase';
-import { Message, UserRole, Sentiment, SupportedLanguage, TeacherMessage, ChatConversation, Attachment } from '../types';
+import { getSocraticResponse, getAudioOverview, generateChatTitle, transcribeAudio } from '@/services/geminiService';
+import { db } from '@/services/mockDatabase';
+import { Message, UserRole, Sentiment, SupportedLanguage, TeacherMessage, ChatConversation, Attachment } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const StudentChat: React.FC = () => {

@@ -532,7 +532,8 @@ class DataService {
       if (!student.savedVisuals) student.savedVisuals = [];
       // Check for duplicates by title or ID
       if (!student.savedVisuals.find(v => v.id === visual.id || v.title === visual.title)) {
-        student.savedVisuals.unshift({ ...visual, createdAt: Date.Now() });
+        student.savedVisuals.unshift({ ...visual, createdAt: Date.now() });
+        console.log("Updated student:", student);
         this.notify();
       }
     }

@@ -113,7 +113,7 @@ def socratic_chat():
 
     except Exception as e:
         print(f"An error occurred: {e}")
-        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
 
 @bp.route('/generate-title', methods=['POST'])
 def generate_chat_title():
@@ -149,7 +149,7 @@ def text_to_speech():
 
     except Exception as e:
         print(f"An error occurred during text-to-speech conversion: {e}")
-        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
 
 @bp.route('/search-resources', methods=['POST'])
 def search_study_resources():
@@ -160,17 +160,80 @@ def search_study_resources():
         return jsonify({"error": "Missing query"}), 400
 
     try:
+        model = genai.GenerativeModel('gemini-2.5-flash', tools=[{"google_search": {}}])
+        
+        response = model.generate_content(f"Find study materials, lecture notes, PDF downloads, and previous year question papers for the following topic: \"{query}\". Prioritize results from universities (like VTU), educational portals, and PDF repositories. Summarize the available resources and key concepts covered.")
+
+        print(f"Gemini API response: {response.text}")
+
+        summary = response.text or "No summary available."
+        
+        # Extract Grounding Chunks (URLs)
+        chunks = response.candidates[0].grounding_metadata.grounding_chunks or []
+        resources = []
+
+        for chunk in chunks:
+            if chunk.web and chunk.web.uri and chunk.web.title:
+                uri = chunk.web.uri
+                resource_type = 'PDF' if uri.lower().endswith('.pdf') else 'WEB'
+                
+                resources.append({
+                    "id": str(uuid.uuid4()),
+                    "title": chunk.web.title,
+                    "uri": uri,
+                    "source": urlparse(uri).hostname,
+                    "type": resource_type
+                })
+
+        # Deduplicate resources based on URI
+        unique_resources = {res['uri']: res for res in resources}.values()
+
+        return jsonify({"summary": summary, "resources": list(unique_resources)})
+
+    except Exception as e:
+        print(f"An error occurred during resource search: {e}")
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
+
+@bp.route('/generate-quiz', methods=['POST'])
+def generate_quiz_questions():
+    data = request.get_json()
+    topic = data.get('topic')
+    difficulty = data.get('difficulty', 'Medium')
+    moduleId = data.get('moduleId')
+
+    if not topic:
+        return jsonify({"error": "Missing topic"}), 400
+
+    try:
         model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = f"""
-        Based on the user's query: "{query}", provide a concise, one-paragraph summary of the topic.
-        Then, provide a list of 3-5 high-quality search terms that can be used to find relevant PDF documents and web links.
+You are an expert quiz creator. Generate 5 multiple-choice questions for a quiz on the topic of "{topic}" with a difficulty level of "{difficulty}".
 
-        You MUST respond in a single valid JSON object with the following schema:
+        You MUST respond in a single valid JSON object. The root of the object should be a list of question objects.
+        Each question object must have the following schema:
         {{
-            "summary": "The concise summary of the topic.",
-            "search_terms": ["search term 1", "search term 2", "search term 3"]
+            "id": "A unique integer for the question (e.g., 1, 2, 3...)",
+            "question": "The question text.",
+            "options": ["Option A", "Option B", "Option C", "Option D"],
+            "correctAnswer": "The index of the correct answer in the options array (0-3).",
+            "topic": "{topic}",
+            "moduleId": "{moduleId}"
         }}
+
+        Example of a valid response:
+        ```json
+        [
+            {{
+                "id": 1,
+                "question": "What is the capital of France?",
+                "options": ["Berlin", "Madrid", "Paris", "Rome"],
+                "correctAnswer": 2,
+                "topic": "Geography",
+                "moduleId": "geo101"
+            }}
+        ]
+        ```
         """
         
         response = model.generate_content(prompt)
@@ -183,16 +246,11 @@ def search_study_resources():
             
         response_json = json.loads(text_to_parse)
 
-        # The agent will use these search terms to find resources.
-        return jsonify({'summary': response_json['summary'], 'search_terms': response_json['search_terms']})
+        return jsonify(response_json)
 
     except Exception as e:
-        print(f"An error occurred during resource search: {e}")
-        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
-
-@bp.route('/generate-quiz', methods=['POST'])
-def generate_quiz_questions():
-    return jsonify([])
+        print(f"An error occurred during quiz generation: {e}")
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
 
 @bp.route('/transcribe-audio', methods=['POST'])
 def transcribe_audio():
@@ -212,7 +270,7 @@ def transcribe_audio():
 
     except Exception as e:
         print(f"An error occurred during transcription: {e}")
-        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
 
 @bp.route('/analyze-code', methods=['POST'])
 def analyze_code():
@@ -254,7 +312,7 @@ def analyze_code():
 
     except Exception as e:
         print(f"An error occurred during code analysis: {e}")
-        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
 
 @bp.route('/analyze-exam-trends', methods=['POST'])
 def analyze_exam_trends():
@@ -298,10 +356,10 @@ def analyze_exam_trends():
         
         # Add unique IDs to the questions
         for i, q in enumerate(response_json['questions']):
-            q['id'] = f'pred_{i+1}'
+            q['id'] = f'pred_{{i+1}}'
 
         return jsonify(response_json['questions'])
 
     except Exception as e:
         print(f"An error occurred during exam trend analysis: {e}")
-        return jsonify({"error": "An unexpected error occurred with the AI service."}), 500
+        return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500

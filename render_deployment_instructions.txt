@@ -13,11 +13,12 @@ Here are the steps to deploy your application on Render:
     *   **Region:** Choose a region that is geographically close to your users.
     *   **Branch:** Select the branch you want to deploy (e.g., 'main').
     *   **Build Command:** `bash build.sh`
-    *   **Start Command:** `gunicorn "backend:create_app()"`
+    *   **Start Command:** `flask run --host=0.0.0.0 --port=$PORT`
 
 4.  **Add Environment Variables:**
     *   Click on the 'Environment' tab.
     *   Add the following environment variables:
+        *   `FLASK_APP`: `backend`
         *   `GEMINI_API_KEY`: Your Gemini API key.
         *   `PYTHON_VERSION`: I recommend `3.10.0`, but you can use any version supported by Render.
         *   `SECRET_KEY`: A long, random string for Flask's session security. You can generate one using a password generator.
