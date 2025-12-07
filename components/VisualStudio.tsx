@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MindmapView } from './MindmapView';
-import { InfographicView } from './InfographicView';
+import { MindmapView } from '@/components/mindmapView';
+import { InfographicView } from '@/components/InfographicView';
 import { generateMindmap, generateInfographic } from '@/services/geminiService';
 import { db } from '@/services/mockDatabase';
 import { MindmapData, InfographicData, StoredVisual } from '@/types';
