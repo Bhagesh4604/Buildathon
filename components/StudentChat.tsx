@@ -184,7 +184,16 @@ export const StudentChat: React.FC = () => {
   };
 
   const handleSend = async () => {
-    if ((!input.trim() && !attachment) || isTyping || !activeConvId) return;
+    console.log("handleSend called");
+    console.log("input:", input);
+    console.log("attachment:", attachment);
+    console.log("isTyping:", isTyping);
+    console.log("activeConvId:", activeConvId);
+
+    if ((!input.trim() && !attachment) || isTyping || !activeConvId) {
+      console.log("handleSend returned early");
+      return;
+    }
 
     const userMsg: Message = {
       id: Date.now().toString(),
