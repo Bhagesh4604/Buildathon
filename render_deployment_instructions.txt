@@ -1,0 +1,28 @@
+Here are the steps to deploy your application on Render:
+
+1.  **Push your code to a GitHub repository.**
+    *   Make sure you have committed all the changes, including the new `requirements.txt`, `build.sh`, and `Procfile`.
+
+2.  **Create a new Web Service on Render:**
+    *   Go to the Render dashboard and click 'New +'.
+    *   Select 'Web Service'.
+    *   Connect your GitHub account and select your repository.
+
+3.  **Configure the service:**
+    *   **Name:** Give your service a name (e.g., 'nxt-tutor').
+    *   **Region:** Choose a region that is geographically close to your users.
+    *   **Branch:** Select the branch you want to deploy (e.g., 'main').
+    *   **Build Command:** `bash build.sh`
+    *   **Start Command:** `gunicorn "backend:create_app()"`
+
+4.  **Add Environment Variables:**
+    *   Click on the 'Environment' tab.
+    *   Add the following environment variables:
+        *   `GEMINI_API_KEY`: Your Gemini API key.
+        *   `PYTHON_VERSION`: I recommend `3.10.0`, but you can use any version supported by Render.
+        *   `SECRET_KEY`: A long, random string for Flask's session security. You can generate one using a password generator.
+
+5.  **Deploy:**
+    *   Click the 'Create Web Service' button. Render will start building and deploying your application.
+
+After the deployment is complete, your application will be available at the URL provided by Render.
