@@ -472,8 +472,8 @@ writeNotes
                setCurrentOutput('');
             }
           },
-          onclose: () => {
-            console.log("Gemini Live Closed");
+          onclose: (e) => {
+            console.log("Gemini Live Closed", e);
             handleDisconnect();
           },
           onerror: (err: any) => {
