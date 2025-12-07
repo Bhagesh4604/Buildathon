@@ -81,8 +81,14 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
     setIsSearching(true);
     setResult(null);
     try {
-      const data = await searchStudyResources(query);
-      setResult(data);
+      const initialResult = await searchStudyResources(query);
+      if (initialResult.search_terms && initialResult.search_terms.length > 0) {
+        // Fetch actual resources using the first search term
+        const resources = await findResources(initialResult.search_terms[0]);
+        setResult({ ...initialResult, resources });
+      } else {
+        setResult(initialResult);
+      }
     } catch (e) {
       console.error(e);
     } finally {
