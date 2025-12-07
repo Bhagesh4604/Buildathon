@@ -59,6 +59,8 @@ export interface Message {
   content: string;
   timestamp: number;
   attachment?: Attachment;
+  steps?: string[];
+  isTyping?: boolean;
 }
 
 export interface ChatConversation {

@@ -1,11 +1,143 @@
-
-
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Bot, User, Loader2, Globe, Bell, Volume2, Square, StopCircle, Plus, MessageSquare, ChevronLeft, Menu, PanelLeftClose, PanelLeftOpen, Paperclip, Mic, X, Image as ImageIcon, FileText } from 'lucide-react';
 import { getSocraticResponse, getAudioOverview, generateChatTitle, transcribeAudio } from '@/services/geminiService';
 import { db } from '@/services/mockDatabase';
 import { Message, UserRole, Sentiment, SupportedLanguage, TeacherMessage, ChatConversation, Attachment } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InlineMath, BlockMath } from 'react-katex';
+import 'katex/dist/katex.min.css';
+import mermaid from 'mermaid';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs'; // You can choose other styles
+
+// Initialize Mermaid
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default', // or 'dark'
+  securityLevel: 'loose',
+});
+
+const StepMessage: React.FC<{ message: Message }> = ({ message }) => {
+  const [displayedSteps, setDisplayedSteps] = useState<string[]>([]);
+  const mermaidRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    if (message.steps && message.steps.length > 0) {
+      const allSteps = message.steps;
+      let currentStep = 0;
+      setDisplayedSteps([]);
+
+      const interval = setInterval(() => {
+        if (currentStep < allSteps.length) {
+          setDisplayedSteps(prev => [...prev, allSteps[currentStep]]);
+          currentStep++;
+        } else {
+          clearInterval(interval);
+        }
+      }, 300 + Math.random() * 200); // Simulate human-like typing speed
+
+      return () => clearInterval(timer);
+    }
+  }, [message.steps]);
+
+  // Effect to render Mermaid diagrams after steps are displayed
+  useEffect(() => {
+    displayedSteps.forEach((step, index) => {
+      if (step.includes('```mermaid')) {
+        const mermaidCodeMatch = step.match(/```mermaid\n([\s\S]*?)\n```/);
+        if (mermaidCodeMatch && mermaidRefs.current[index]) {
+          const code = mermaidCodeMatch[1];
+          try {
+            mermaid.render(`mermaid-chart-${message.id}-${index}`, code).then(({ svg }) => {
+              if (mermaidRefs.current[index]) {
+                mermaidRefs.current[index]!.innerHTML = svg;
+              }
+            }).catch(err => {
+              console.error("Mermaid render error:", err);
+            });
+          } catch (e) {
+            console.error("Mermaid parse error:", e);
+          }
+        }
+      }
+    });
+  }, [displayedSteps, message.id]);
+
+  const renderStepContent = (step: string, index: number) => {
+    // Check for Mermaid diagram
+    const mermaidCodeMatch = step.match(/```mermaid\n([\s\S]*?)\n```/);
+    if (mermaidCodeMatch) {
+      return (
+        <div ref={el => mermaidRefs.current[index] = el} className="mermaid-chart overflow-auto">
+          {/* Mermaid diagram will be rendered here */}
+        </div>
+      );
+    }
+
+    // Check for Code Block
+    const codeBlockMatch = step.match(/```(\w+)\n([\s\S]*?)\n```/);
+    if (codeBlockMatch) {
+      const language = codeBlockMatch[1];
+      const code = codeBlockMatch[2];
+      return (
+        <SyntaxHighlighter language={language} style={docco}>
+          {code}
+        </SyntaxHighlighter>
+      );
+    }
+
+    // Check for Block Math (starts and ends with $$)
+    if (step.startsWith('$$') && step.endsWith('$$')) {
+      return <BlockMath math={step.substring(2, step.length - 2)} />;
+    }
+
+    // Check for Inline Math (contains $...$)
+    const mathRegex = /\$(.*?)\$/g;
+    const parts = step.split(mathRegex);
+    
+    return (
+      <p>
+        {parts.map((part, i) => {
+          if (i % 2 === 1) { // It's a math part
+            try {
+              return <InlineMath key={i} math={part} />;
+            } catch (error) {
+              console.error("Inline Math render error:", error);
+              return <span key={i} className="text-red-500">{part}</span>; // Render as normal text on error
+            }
+          }
+          return <React.Fragment key={i}>{part}</React.Fragment>;
+        })}
+      </p>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      {displayedSteps.map((step, index) => (
+        <motion.div
+          key={index}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: index * 0.05 + 0.1, duration: 0.3 }} // Faster animation for steps
+          className="text-gray-800 dark:text-gray-100"
+        >
+          {renderStepContent(step, index)}
+        </motion.div>
+      ))}
+      {displayedSteps.length === (message.steps?.length || 0) && message.content && (
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: (message.steps?.length || 0) * 0.05 + 0.2, duration: 0.3 }}
+          className="mt-4 text-sm leading-relaxed"
+        >
+          {message.content}
+        </motion.p>
+      )}
+    </div>
+  );
+};
 
 export const StudentChat: React.FC = () => {
   const currentStudent = db.getCurrentStudent();
@@ -15,6 +147,7 @@ export const StudentChat: React.FC = () => {
   
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [language, setLanguage] = useState<SupportedLanguage>(currentStudent.preferredLanguage || SupportedLanguage.ENGLISH);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showHistorySidebar, setShowHistorySidebar] = useState(true);
@@ -236,6 +369,8 @@ export const StudentChat: React.FC = () => {
         id: (Date.now() + 1).toString(),
         role: 'model',
         content: response.tutor_response,
+        steps: response.steps || [],
+        isTyping: response.steps && response.steps.length > 0,
         timestamp: Date.now()
       };
       setMessages(prev => [...prev, aiMsg]);
@@ -256,6 +391,7 @@ export const StudentChat: React.FC = () => {
       console.error("Chat error", error);
     } finally {
       setIsTyping(false);
+      setIsStreaming(false);
     }
   };
 
@@ -319,7 +455,7 @@ export const StudentChat: React.FC = () => {
       {/* Animated History Sidebar */}
       <motion.div 
         initial={false}
-        animate={{ 
+        animate={{
           width: showHistorySidebar ? 280 : 0,
           opacity: showHistorySidebar ? 1 : 0,
           x: showHistorySidebar ? 0 : -20
@@ -373,7 +509,7 @@ export const StudentChat: React.FC = () => {
                         onClick={() => handleSelectConversation(chat.id)}
                         className={`w-full text-left px-3 py-2.5 rounded-lg text-sm truncate flex items-center space-x-3 transition-all
                           ${activeConvId === chat.id 
-                            ? 'bg-white dark:bg-gray-800 shadow-sm border border-indigo-100 dark:border-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-medium' 
+                            ? 'bg-white dark:bg-gray-800 shadow-sm border border-indigo-100 dark:border-indigo-900/50 text-indigo-700 dark:text-indigo-300 font-medium'
                             : 'text-gray-600 dark:text-gray-400 hover:bg-white/50 dark:hover:bg-gray-800/50 hover:text-gray-900 dark:hover:text-white'
                           }
                         `}
@@ -468,7 +604,7 @@ export const StudentChat: React.FC = () => {
                  
                  <div className="flex flex-col">
                    <div
-                     className={`rounded-2xl p-4 text-sm leading-relaxed shadow-sm backdrop-blur-sm transition-all duration-300 ${
+                     className={`rounded-2xl p-4 text-sm leading-relaxed shadow-sm backdrop-blur-sm transition-all duration-300 ${ 
                        msg.role === 'user'
                          ? 'bg-indigo-600 text-white rounded-tr-none'
                          : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none border border-gray-100 dark:border-gray-700'
@@ -479,7 +615,7 @@ export const StudentChat: React.FC = () => {
                        <div className="mb-2 rounded-lg overflow-hidden border border-white/20">
                           {msg.attachment.type === 'image' ? (
                             <img 
-                              src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`} 
+                              src={`data:${msg.attachment.mimeType};base64,${msg.attachment.data}`}
                               alt="Attachment" 
                               className="max-w-full max-h-60 object-contain bg-black/10"
                             />
@@ -491,15 +627,15 @@ export const StudentChat: React.FC = () => {
                           )}
                        </div>
                      )}
-                     {msg.content}
+                      {msg.steps && msg.steps.length > 0 ? <StepMessage message={msg} /> : msg.content}
                    </div>
                    {/* Read Aloud Button for AI */}
                    {msg.role === 'model' && (
                       <button 
                         onClick={() => handleReadAloud(msg.content, msg.id)}
-                        className={`self-start mt-2 text-xs flex items-center space-x-1.5 px-2 py-1 rounded-md transition-colors ${
+                        className={`self-start mt-2 text-xs flex items-center space-x-1.5 px-2 py-1 rounded-md transition-colors ${ 
                           playingMessageId === msg.id 
-                            ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium' 
+                            ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 font-medium'
                             : 'text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400'
                         }`}
                       >
