@@ -3,7 +3,7 @@ import { Message, AIResponseSchema, Sentiment, SupportedLanguage, StudyResource,
 // Note: In a real production app, this would live in the Python Backend.
 // We are implementing it here to simulate the AI Core.
 
-const API_URL = 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export const getSocraticResponse = async (
   history: Message[],
