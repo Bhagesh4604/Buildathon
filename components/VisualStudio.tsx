@@ -4,9 +4,8 @@ import { InfographicView } from '@/components/InfographicView';
 import { generateMindmap, generateInfographic } from '@/services/geminiService';
 import { db } from '@/services/mockDatabase';
 import { MindmapData, InfographicData, StoredVisual } from '@/types';
-import { Network, FileImage, Loader2, Sparkles, Wand2, FolderOpen, Save, Trash2, X, Clock, Upload, FileText, Image as ImageIcon, Link as LinkIcon, PanelLeftClose, PanelLeftOpen, Settings2, Download } from 'lucide-react';
+import { Network, FileImage, Loader2, Sparkles, Wand2, FolderOpen, Save, Trash2, X, Clock, Upload, FileText, Image as ImageIcon, Link as LinkIcon, PanelLeftClose, PanelLeftOpen, Settings2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import html2canvas from 'html2canvas';
 
 import { useAuth } from './AuthContext';
 
@@ -33,7 +32,6 @@ export const VisualStudio: React.FC = () => {
   const [_, setDbVersion] = useState(0); // To force re-render on db change
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const infographicRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsubscribe = db.subscribe(() => {
@@ -134,20 +132,6 @@ export const VisualStudio: React.FC = () => {
     
     db.saveVisual(user.id, newVisual);
     alert('Saved to Library!');
-  };
-
-  const handleDownload = () => {
-    if (mode === 'infographic' && infographicRef.current) {
-      html2canvas(infographicRef.current).then(canvas => {
-        const link = document.createElement('a');
-        link.download = 'infographic.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-      });
-    } else if (mode === 'mindmap') {
-      // Mindmap download logic will go here
-      alert("Mindmap download not yet implemented.");
-    }
   };
 
   const handleLoadVisual = (visual: StoredVisual) => {
@@ -322,22 +306,13 @@ export const VisualStudio: React.FC = () => {
                 </button>
                 
                 {(mindmapData || infographicData) && (
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleSaveToLibrary}
-                      className="flex items-center px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-sm font-medium border border-green-200 dark:border-green-800"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                    </button>
-                    <button
-                      onClick={handleDownload}
-                      className="flex items-center px-3 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors text-sm font-medium border border-blue-200 dark:border-blue-800"
-                    >
-                      <Download className="w-4 h-4 mr-2" />
-                      Download
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleSaveToLibrary}
+                    className="flex items-center px-3 py-1.5 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors text-sm font-medium border border-green-200 dark:border-green-800"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </button>
                 )}
             </div>
          </div>
@@ -362,7 +337,7 @@ export const VisualStudio: React.FC = () => {
             )}
 
             {mode === 'infographic' && infographicData && (
-              <div ref={infographicRef} className="w-full h-full p-6 md:p-8 overflow-y-auto custom-scrollbar">
+              <div className="w-full h-full p-6 md:p-8 overflow-y-auto custom-scrollbar">
                 <InfographicView data={infographicData} />
               </div>
             )}
@@ -386,7 +361,7 @@ export const VisualStudio: React.FC = () => {
         {showLibrary && (
            <div className="absolute inset-0 z-50 flex justify-end">
               <motion.div 
-                 initial={{ opacity: 0 }} 
+                 initial={{ opacity: 0 }}
                  animate={{ opacity: 1 }}
                  exit={{ opacity: 0 }}
                  className="absolute inset-0 bg-black/50 backdrop-blur-sm"

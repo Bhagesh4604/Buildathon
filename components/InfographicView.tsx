@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, Variants } from 'framer-motion';
 import { 
   PieChart, List, Activity, 
-  Calendar, ChevronRight, Maximize2, Minimize2, Sparkles
+  Calendar, ChevronRight, Maximize2, Minimize2, Sparkles, Download
 } from 'lucide-react';
 import { InfographicData, InfographicSection } from '../types';
+import html2canvas from 'html2canvas';
 
 interface InfographicViewProps {
   data: InfographicData;
@@ -106,11 +107,24 @@ const SectionCard: React.FC<{ section: InfographicSection; index: number }> = ({
 
 export const InfographicView: React.FC<InfographicViewProps> = ({ data }) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const infographicRef = useRef<HTMLDivElement>(null);
   const highlight_insights = data?.highlight_insights || [];
   const sections = data?.sections || [];
 
+  const handleDownload = () => {
+    if (infographicRef.current) {
+      html2canvas(infographicRef.current).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'infographic.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+  };
+
   return (
     <div 
+      ref={infographicRef}
       className={`transition-all duration-300 bg-white shadow-xl border border-gray-100 overflow-hidden flex flex-col ${
         isFullscreen 
           ? 'fixed inset-0 z-50 rounded-none h-full' 
@@ -129,6 +143,13 @@ export const InfographicView: React.FC<InfographicViewProps> = ({ data }) => {
          </div>
          
          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownload}
+              className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
+              title="Download Infographic"
+            >
+              <Download className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setIsFullscreen(!isFullscreen)}
               className="p-2 hover:bg-gray-100 rounded-lg text-gray-500 transition-colors"
