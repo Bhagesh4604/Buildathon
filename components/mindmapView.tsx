@@ -10,9 +10,11 @@ import ReactFlow, {
   Node,
   Edge,
   ReactFlowProvider,
-  useReactFlow
+  useReactFlow,
+  getRectOfNodes,
+  toPng
 } from 'reactflow';
-import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Download } from 'lucide-react';
 import { MindmapData } from '@/types';
 import { MindmapNode, MindmapNodeData } from '@/components/mindmapNode';
 
@@ -44,7 +46,7 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const { fitView } = useReactFlow();
+  const { getNodes, fitView } = useReactFlow();
 
   // Reset collapse state when data changes (new generation)
   useEffect(() => {
@@ -179,6 +181,25 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
      return () => clearTimeout(timer);
   }, [data, fitView]);
 
+  const handleDownload = () => {
+    const nodes = getNodes();
+    if (nodes.length === 0) {
+      return;
+    }
+    const nodesBounds = getRectOfNodes(nodes);
+    toPng(nodesBounds, {
+      width: nodesBounds.width,
+      height: nodesBounds.height,
+      x: nodesBounds.x,
+      y: nodesBounds.y,
+    }).then((dataUrl) => {
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'mindmap.png';
+      a.click();
+    });
+  };
+
   return (
     <div className={`transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-50' : 'w-full h-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative'}`}>
       
@@ -208,6 +229,13 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
 
       {/* Toolbar */}
       <div className="absolute top-4 right-4 flex space-x-2 z-10">
+        <button 
+          onClick={handleDownload}
+          className="p-2 bg-white rounded-lg shadow-md border border-gray-200 text-gray-600 hover:text-indigo-600 hover:border-indigo-200 transition-all"
+          title="Download Mindmap"
+        >
+          <Download className="w-5 h-5" />
+        </button>
         <button 
           onClick={() => fitView({ padding: 0.2, duration: 800 })}
           className="p-2 bg-white rounded-lg shadow-md border border-gray-200 text-gray-600 hover:text-indigo-600 hover:border-indigo-200 transition-all"

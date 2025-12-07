@@ -526,22 +526,64 @@ class DataService {
   }
 
   // --- VISUALS MANAGEMENT ---
-  saveVisual(studentId: string, visual: StoredVisual) {
-    const student = this.students.find(s => s.id === studentId);
-    if (student) {
-      if (!student.savedVisuals) student.savedVisuals = [];
-      // Check for duplicates by title or ID
-      if (!student.savedVisuals.find(v => v.id === visual.id || v.title === visual.title)) {
-        student.savedVisuals.unshift({ ...visual, createdAt: Date.now() });
-        console.log("Updated student:", student);
-        this.notify();
+  async saveVisual(studentId: string, visual: StoredVisual) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error("No token found, cannot save visual.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/library/save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(visual)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save visual to the library.');
       }
+
+      // We are not notifying the local mock db anymore,
+      // as the data is now saved in the real database.
+      // this.notify();
+
+    } catch (error) {
+      console.error("Error saving visual:", error);
+      // Optionally re-throw or handle the error in the UI
+      throw error;
     }
   }
 
-  getVisuals(studentId: string): StoredVisual[] {
-    const student = this.students.find(s => s.id === studentId);
-    return student && student.savedVisuals ? deepClone(student.savedVisuals).sort((a, b) => b.createdAt - a.createdAt) : [];
+  async getVisuals(studentId: string): Promise<StoredVisual[]> {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error("No token found, cannot get visuals.");
+      return [];
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/library/visuals`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch visuals from the library.');
+      }
+
+      const visuals = await response.json();
+      return visuals;
+
+    } catch (error) {
+      console.error("Error fetching visuals:", error);
+      return [];
+    }
   }
 
   removeVisual(studentId: string, visualId: string) {
