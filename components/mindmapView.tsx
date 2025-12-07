@@ -14,7 +14,7 @@ import ReactFlow, {
 } from 'reactflow';
 import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { MindmapData } from '@/types';
-import { MindmapNode, MindmapNodeData } from './MindmapNode';
+import { MindmapNode, MindmapNodeData } from '@/components/mindmapNode';
 
 interface MindmapViewProps {
   data: MindmapData;
