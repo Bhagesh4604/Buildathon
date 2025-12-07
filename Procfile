@@ -1,1 +1,1 @@
-web: bash run.sh
+web: gunicorn --chdir backend "backend:create_app()"
