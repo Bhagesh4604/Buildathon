@@ -6,6 +6,7 @@ import os
 import uuid
 from urllib.parse import urlparse
 import json
+from backend.routes.mindmap import MINDMAP_PROMPT_TEMPLATE
 
 bp = Blueprint('ai', __name__)
 
@@ -13,7 +14,10 @@ genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
 
 def get_system_instruction(language):
     return f"""
-You are NXT TUTOR, an expert AI Socratic Tutor. Your goal is to build deep understanding, not just help them complete a task.
+You are NXT TUTOR, an expert and encouraging AI Socratic Tutor for all subjects. Your goal is to build deep understanding, not just help students complete a task.
+
+### EXPERTISE:
+You are an expert in a wide range of subjects, including but not limited to: Math, Science (Physics, Chemistry, Biology), History, Literature, Computer Science, and more.
 
 ### CORE PEDAGOGICAL RULES:
 1. **Prioritize Correctness:** Your primary goal is to provide accurate and correct information. If you are unsure about an answer, state that you are not sure rather than providing a potentially incorrect answer.
@@ -23,12 +27,13 @@ You are NXT TUTOR, an expert AI Socratic Tutor. Your goal is to build deep under
    - **Phase 1 (Discovery):** If the student is engaging well, ask open-ended "Why?" or "How?" questions.
    - **Phase 2 (Struggle):** If the student is wrong, provide a specific hint or counter-example.
    - **Phase 3 (Frustration):** If the student is frustrated, **drop the abstract questioning**. Validate their emotion ("I see this is tricky"). Provide a distinct analogy or a multiple-choice question to lower cognitive load.
-5. **Variety in Questioning:**
+5. **Proactive Guidance:** After a student understands a concept, suggest a related topic, a real-world application, or a more advanced question to deepen their knowledge.
+6. **Variety in Questioning:**
    - *Analogy:* "Think of voltage like water pressure..."
    - *Counter-example:* "If that were true, wouldn't [X] happen?"
    - *Reflection:* "What part of the step usually trips you up?"
-6. **Brevity:** Keep responses under 60 words. Students ignore long lectures.
-7. **Visual Analysis:** If the student uploads an image or file, analyze it as an educational resource. If it's a math problem, guide them through the steps to solve it (without giving the answer). If it's a diagram, ask them to explain parts of it.
+7. **Brevity:** Keep responses under 60 words. Students ignore long lectures.
+8. **Visual Analysis:** If the student uploads an image or file, analyze it as an educational resource. If it's a math problem, guide them through the steps to solve it (without giving the answer). If it's a diagram, ask them to explain parts of it.
 
 ### LANGUAGE & FORMAT:
 - **Student Language:** {language} (Fluency is required).
@@ -363,3 +368,39 @@ def analyze_exam_trends():
     except Exception as e:
         print(f"An error occurred during exam trend analysis: {e}")
         return jsonify({"error": "An unexpected error occurred with the AI service."} ), 500
+
+@bp.route('/expand-topic', methods=['POST'])
+def expand_topic():
+    data = request.get_json()
+    topic = data.get('topic')
+
+    if not topic:
+        return jsonify({"error": "Missing topic"}), 400
+
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        prompt = MINDMAP_PROMPT_TEMPLATE.replace("<<INSERT USER CONTENT HERE>>", f"A detailed breakdown of the topic: {topic}")
+        
+        response = model.generate_content(prompt)
+
+        print(f"Gemini API response: {response.text}")
+
+        # Strip the markdown wrapper if it exists
+        text_to_parse = response.text
+        if text_to_parse.startswith("```json"):
+            text_to_parse = text_to_parse[7:]
+        if text_to_parse.endswith("```"):
+            text_to_parse = text_to_parse[:-3]
+
+        try:
+            mindmap_json = json.loads(text_to_parse)
+        except json.JSONDecodeError:
+            print("Error: Failed to decode JSON from Gemini API response.")
+            return jsonify({"error": "The AI model returned an invalid response."}), 500
+        
+        return jsonify(mindmap_json)
+
+    except Exception as e:
+        print(f"An error occurred during mindmap expansion: {e}")
+        return jsonify({"error": "Failed to generate expanded mindmap"}), 500

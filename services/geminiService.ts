@@ -201,36 +201,28 @@ export const analyzeExamTrends = async (topic: string): Promise<PredictedQuestio
 
 // --- Visual Studio Generators ---
 
-export const generateMindmap = async (input: string, imageBase64?: string): Promise<MindmapData | null> => {
+export const expandTopic = async (topic: string): Promise<MindmapData | null> => {
   try {
-    const response = await fetch(`${API_URL}/mindmap/generate-mindmap`, {
+    const response = await fetch(`${API_URL}/ai/expand-topic`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt: input, imageBase64 }),
+        body: JSON.stringify({ topic }),
     });
     if (!response.ok) throw new Error('Network response was not ok');
     return await response.json();
   } catch (error) {
-    console.error("Mindmap Gen Error", error);
+    console.error("Expand Topic Error", error);
     return null;
   }
 };
 
-export const generateInfographic = async (input: string, imageBase64?: string): Promise<InfographicData | null> => {
-  try {
-    const response = await fetch(`${API_URL}/infographic/generate-infographic`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: input, imageBase64 }),
-    });
-    if (!response.ok) throw new Error('Network response was not ok');
-    return await response.json();
-  } catch (error) {
-    console.error("Infographic Gen Error", error);
-    return null;
-  }
+export const generateMindmap = async (input: string, imageBase64?: string): Promise<MindmapData | null> => {
+// ... existing code ...
 };
+
+export const generateInfographic = async (input: string, imageBase64?: string): Promise<InfographicData | null> => {
+// ... existing code ...
+};
+

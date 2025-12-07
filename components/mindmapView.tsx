@@ -1,5 +1,4 @@
-import 'reactflow/dist/style.css';
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import ReactFlow, { 
   MiniMap, 
   Controls, 
@@ -12,9 +11,10 @@ import ReactFlow, {
   ReactFlowProvider,
   useReactFlow
 } from 'reactflow';
-import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw, Download } from 'lucide-react';
 import { MindmapData } from '@/types';
 import { MindmapNode, MindmapNodeData } from '@/components/mindmapNode';
+import html2canvas from 'html2canvas';
 
 interface MindmapViewProps {
   data: MindmapData;
@@ -45,6 +45,7 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set());
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { fitView } = useReactFlow();
+  const mindmapRef = useRef<HTMLDivElement>(null);
 
   // Reset collapse state when data changes (new generation)
   useEffect(() => {
@@ -136,7 +137,8 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
           theme: node.theme || 'default',
           isCollapsed: isCollapsed,
           hasChildren: children.length > 0,
-          onToggle: toggleCollapse
+          onToggle: toggleCollapse,
+          onExpand: (label: string) => alert(`Expanding ${label}`)
         } as MindmapNodeData,
       });
 
@@ -179,8 +181,19 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
      return () => clearTimeout(timer);
   }, [data, fitView]);
 
+  const handleDownload = useCallback(() => {
+    if (mindmapRef.current) {
+      html2canvas(mindmapRef.current).then(canvas => {
+        const link = document.createElement('a');
+        link.download = 'mindmap.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      });
+    }
+  }, [mindmapRef]);
+
   return (
-    <div className={`transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-50' : 'w-full h-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative'}`}>
+    <div ref={mindmapRef} className={`transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-50 bg-slate-50' : 'w-full h-full bg-slate-50 rounded-xl overflow-hidden border border-slate-200 relative'}`}>
       
       <ReactFlow
         nodes={nodes}
@@ -208,6 +221,13 @@ const MindmapFlow: React.FC<MindmapViewProps> = ({ data }) => {
 
       {/* Toolbar */}
       <div className="absolute top-4 right-4 flex space-x-2 z-10">
+        <button
+          onClick={handleDownload}
+          className="p-2 bg-white rounded-lg shadow-md border border-gray-200 text-gray-600 hover:text-indigo-600 hover:border-indigo-200 transition-all"
+          title="Download Mindmap"
+        >
+          <Download className="w-5 h-5" />
+        </button>
         <button 
           onClick={() => fitView({ padding: 0.2, duration: 800 })}
           className="p-2 bg-white rounded-lg shadow-md border border-gray-200 text-gray-600 hover:text-indigo-600 hover:border-indigo-200 transition-all"

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MindmapView } from '@/components/mindmapView';
 import { InfographicView } from '@/components/InfographicView';
-import { generateMindmap, generateInfographic } from '@/services/geminiService';
+import { generateMindmap, generateInfographic, expandTopic } from '@/services/geminiService';
 import { db } from '@/services/mockDatabase';
 import { MindmapData, InfographicData, StoredVisual } from '@/types';
 import { Network, FileImage, Loader2, Sparkles, Wand2, FolderOpen, Save, Trash2, X, Clock, Upload, FileText, Image as ImageIcon, Link as LinkIcon, PanelLeftClose, PanelLeftOpen, Settings2 } from 'lucide-react';
@@ -150,6 +150,19 @@ export const VisualStudio: React.FC = () => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this?")) {
       db.removeVisual(user.id, id);
+    }
+  };
+
+  const handleExpandTopic = async (topic: string) => {
+    setIsGenerating(true);
+    try {
+      const data = await expandTopic(topic);
+      setMindmapData(data);
+    } catch (e) {
+      console.error(e);
+      alert("Failed to expand topic. Please try again.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -332,7 +345,7 @@ export const VisualStudio: React.FC = () => {
 
             {mode === 'mindmap' && mindmapData && (
               <div className="w-full h-full min-h-0">
-                 <MindmapView data={mindmapData} />
+                 <MindmapView data={mindmapData} onExpandTopic={handleExpandTopic} />
               </div>
             )}
 

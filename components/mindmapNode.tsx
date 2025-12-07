@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { ChevronRight, Circle, MinusCircle } from 'lucide-react';
+import { ChevronRight, Circle, MinusCircle, ZoomIn } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 // Interface for the data passed to the custom node
@@ -11,6 +11,7 @@ export interface MindmapNodeData {
   isCollapsed: boolean;
   hasChildren: boolean;
   onToggle: (id: string) => void;
+  onExpand: (label: string) => void;
 }
 
 // Visual themes corresponding to NotebookLM-style colors
@@ -27,7 +28,7 @@ const themeStyles: Record<string, string> = {
 };
 
 export const MindmapNode = memo(({ data, id }: NodeProps<MindmapNodeData>) => {
-  const { label, depth, theme, isCollapsed, hasChildren, onToggle } = data;
+  const { label, depth, theme, isCollapsed, hasChildren, onToggle, onExpand } = data;
 
   const styleClass = depth === 0 
     ? themeStyles.root 
@@ -68,6 +69,19 @@ export const MindmapNode = memo(({ data, id }: NodeProps<MindmapNodeData>) => {
           ) : (
              <MinusCircle className="w-3 h-3" />
           )}
+        </button>
+      )}
+
+      {depth > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onExpand(label);
+          }}
+          className="absolute -left-3 w-6 h-6 rounded-full bg-white border border-gray-200 shadow-md flex items-center justify-center text-gray-400 hover:bg-green-50 hover:text-green-600 transition-all z-10 hover:scale-110"
+          title="Expand Topic"
+        >
+          <ZoomIn className="w-3 h-3" />
         </button>
       )}
 
