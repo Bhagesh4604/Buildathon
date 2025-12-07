@@ -94,7 +94,7 @@ const StepMessage: React.FC<{ message: Message }> = ({ message }) => {
   };
 
   return (
-    <div className="space-y-4 font-mono">
+    <div className="space-y-3">
       {displayedSteps.map((step, index) => (
         <motion.div
           key={index}
@@ -383,7 +383,8 @@ export const StudentChat: React.FC = () => {
   return (
     <div className="flex flex-row h-full gap-0 relative isolate overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-xl font-sans">
       {/* ... (sidebar) ... */}
-      <div className="flex-1 flex flex-col relative bg-gray-50 dark:bg-black">
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col relative bg-white/50 dark:bg-gray-900/50 backdrop-blur-md">
         {/* ... (header) ... */}
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6" ref={scrollRef}>
