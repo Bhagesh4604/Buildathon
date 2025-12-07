@@ -1,6 +1,6 @@
-import { Message, AIResponseSchema, Sentiment, SupportedLanguage, StudyResource, QuizQuestion } from "../types";
+import { Message, AIResponseSchema, Sentiment, SupportedLanguage, StudyResource, QuizQuestion, MindmapData, InfographicData } from "../types";
 
-const API_URL = 'http://localhost:5000/ai';
+const API_URL = 'http://localhost:5000';
 
 export const getSocraticResponse = async (
   history: Message[],
@@ -9,7 +9,7 @@ export const getSocraticResponse = async (
   currentAttachment?: { mimeType: string; data: string }
 ): Promise<AIResponseSchema> => {
   try {
-    const response = await fetch(`${API_URL}/socratic-chat`, {
+    const response = await fetch(`${API_URL}/ai/socratic-chat`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -39,7 +39,7 @@ export const getSocraticResponse = async (
 
 export const generateChatTitle = async (message: string): Promise<string> => {
   try {
-    const response = await fetch(`${API_URL}/generate-title`, {
+    const response = await fetch(`${API_URL}/ai/generate-title`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -56,7 +56,7 @@ export const generateChatTitle = async (message: string): Promise<string> => {
 
 export const getAudioOverview = async (text: string): Promise<string> => {
     try {
-        const response = await fetch(`${API_URL}/text-to-speech`, {
+        const response = await fetch(`${API_URL}/ai/text-to-speech`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -81,7 +81,7 @@ export interface ResearchResult {
 
 export const searchStudyResources = async (query: string): Promise<ResearchResult> => {
     try {
-        const response = await fetch(`${API_URL}/search-resources`, {
+        const response = await fetch(`${API_URL}/ai/search-resources`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -103,7 +103,7 @@ export const searchStudyResources = async (query: string): Promise<ResearchResul
 
 export const generateQuizQuestions = async (topic: string, difficulty: 'Easy' | 'Medium' | 'Hard', moduleId: string): Promise<QuizQuestion[]> => {
     try {
-        const response = await fetch(`${API_URL}/generate-quiz`, {
+        const response = await fetch(`${API_URL}/ai/generate-quiz`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ export const generateQuizQuestions = async (topic: string, difficulty: 'Easy' | 
 
 export const transcribeAudio = async (audioBase64: string, mimeType: string = 'audio/webm'): Promise<string> => {
     try {
-        const response = await fetch(`${API_URL}/transcribe-audio`, {
+        const response = await fetch(`${API_URL}/ai/transcribe-audio`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -148,7 +148,7 @@ export const findResources = async (searchTerm: string): Promise<StudyResource[]
 
 export const analyzeAndFixCode = async (imageBase64: string, language: string): Promise<{ fixedCode: string, explanation: string }> => {
   try {
-    const response = await fetch(`${API_URL}/analyze-code`, {
+    const response = await fetch(`${API_URL}/ai/analyze-code`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ export const analyzeAndFixCode = async (imageBase64: string, language: string): 
 
 export const analyzeExamTrends = async (topic: string): Promise<PredictedQuestion[]> => {
     try {
-        const response = await fetch(`${API_URL}/analyze-exam-trends`, {
+        const response = await fetch(`${API_URL}/ai/analyze-exam-trends`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -180,5 +180,39 @@ export const analyzeExamTrends = async (topic: string): Promise<PredictedQuestio
     } catch (error) {
         console.error("Exam trend analysis error:", error);
         return [];
+    }
+};
+
+export const generateMindmap = async (prompt: string, imageBase64?: string): Promise<MindmapData> => {
+    try {
+        const response = await fetch(`${API_URL}/mindmap/generate-mindmap`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt, imageBase64 }),
+        });
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error("Mindmap generation error:", error);
+        return { title: "Error", nodes: [{ id: "1", label: "Failed to generate Mindmap", theme: "rose" }] };
+    }
+};
+
+export const generateInfographic = async (prompt: string, imageBase64?: string): Promise<InfographicData> => {
+    try {
+        const response = await fetch(`${API_URL}/infographic/generate-infographic`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt, imageBase64 }),
+        });
+        if (!response.ok) throw new Error('Network response was not ok');
+        return await response.json();
+    } catch (error) {
+        console.error("Infographic generation error:", error);
+        return { title: "Error", sections: [{ heading: "Failed to generate Infographic", content_type: "list", items: [] }] };
     }
 };

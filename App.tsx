@@ -13,13 +13,14 @@ import { CommandMenu } from './components/CommandMenu';
 import { AnimatedSidebar } from './components/AnimatedSidebar';
 import { NeonOrbs } from './components/NeonOrbs';
 import { AudioTranscriber } from './components/AudioTranscriber';
+import { VisualStudio } from './components/VisualStudio'; // Import VisualStudio
 import { UserRole } from './types';
 import { motion } from 'framer-motion';
 import { useAuth } from './components/AuthContext';
 
 const App: React.FC = () => {
   const { isAuthenticated, user, role, login, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'progress' | 'live' | 'profile' | 'resources' | 'transcribe'>('chat');
+  const [activeTab, setActiveTab] = useState<'chat' | 'quiz' | 'progress' | 'live' | 'profile' | 'resources' | 'transcribe' | 'visualStudio'>('chat'); // Add 'visualStudio' to activeTab state
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   
   // Theme State
@@ -127,6 +128,7 @@ const App: React.FC = () => {
                {activeTab === 'transcribe' && <AudioTranscriber />}
                {activeTab === 'progress' && <StudentProgress />}
                {activeTab === 'profile' && <ProfileSection role={UserRole.STUDENT} userData={user} onBack={handleBack} />}
+               {activeTab === 'visualStudio' && <VisualStudio />} 
             </div>
           </div>
         ) : (

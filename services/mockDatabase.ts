@@ -1,4 +1,4 @@
-import { StudentProfile, TeacherProfile, InterventionFlag, AIDecisionLog, Sentiment, ModuleStats, SupportedLanguage, TeacherMessage, AIVoice, StudyResource, UserRole, QuizQuestion, Message, LiveSession, QuizAttempt, ChatConversation } from "../types";
+import { StudentProfile, TeacherProfile, InterventionFlag, AIDecisionLog, Sentiment, ModuleStats, SupportedLanguage, TeacherMessage, AIVoice, StudyResource, UserRole, QuizQuestion, Message, LiveSession, QuizAttempt, ChatConversation, StoredVisual } from "../types";
 
 const API_URL = 'http://localhost:5000';
 
@@ -71,7 +71,8 @@ const MOCK_STUDENTS: StudentProfile[] = [
     savedResources: [],
     conversations: [], // Updated from chatHistory
     liveSessions: [],
-    attempts: []
+    attempts: [],
+    savedVisuals: []
   },
   {
     id: 's2',
@@ -93,7 +94,8 @@ const MOCK_STUDENTS: StudentProfile[] = [
     savedResources: [],
     conversations: [],
     liveSessions: [],
-    attempts: []
+    attempts: [],
+    savedVisuals: []
   },
   {
     id: 's3',
@@ -115,7 +117,8 @@ const MOCK_STUDENTS: StudentProfile[] = [
     savedResources: [],
     conversations: [],
     liveSessions: [],
-    attempts: []
+    attempts: [],
+    savedVisuals: []
   },
   {
     id: 's4',
@@ -137,7 +140,8 @@ const MOCK_STUDENTS: StudentProfile[] = [
     savedResources: [],
     conversations: [],
     liveSessions: [],
-    attempts: []
+    attempts: [],
+    savedVisuals: []
   },
 ];
 
@@ -147,7 +151,7 @@ const MOCK_TEACHERS: TeacherProfile[] = [
     id: 't1',
     name: 'Mr. Anderson',
     email: 'teacher@school.edu',
-    password: 'Bhagesh@4604', // Updated Password
+    password: 'Bhagesh@4604',
     subject: 'Physics & Mathematics',
     bio: 'Passionate about making STEM accessible to everyone. 15 years of teaching experience.',
     yearsOfExperience: 15,
@@ -298,7 +302,8 @@ class DataService {
                 savedResources: [],
                 conversations: [],
                 liveSessions: [],
-                attempts: []
+                attempts: [],
+                savedVisuals: []
             };
             this.students.push(newStudent);
             this.currentStudentId = newStudent.id;
@@ -516,6 +521,32 @@ class DataService {
     const student = this.students.find(s => s.id === studentId);
     if (student) {
       student.savedResources = student.savedResources.filter(r => r.id !== resourceId);
+      this.notify();
+    }
+  }
+
+  // --- VISUALS MANAGEMENT ---
+  saveVisual(studentId: string, visual: StoredVisual) {
+    const student = this.students.find(s => s.id === studentId);
+    if (student) {
+      if (!student.savedVisuals) student.savedVisuals = [];
+      // Check for duplicates by title or ID
+      if (!student.savedVisuals.find(v => v.id === visual.id || v.title === visual.title)) {
+        student.savedVisuals.unshift({ ...visual, createdAt: Date.Now() });
+        this.notify();
+      }
+    }
+  }
+
+  getVisuals(studentId: string): StoredVisual[] {
+    const student = this.students.find(s => s.id === studentId);
+    return student && student.savedVisuals ? deepClone(student.savedVisuals).sort((a, b) => b.createdAt - a.createdAt) : [];
+  }
+
+  removeVisual(studentId: string, visualId: string) {
+    const student = this.students.find(s => s.id === studentId);
+    if (student) {
+      student.savedVisuals = student.savedVisuals.filter(v => v.id !== visualId);
       this.notify();
     }
   }

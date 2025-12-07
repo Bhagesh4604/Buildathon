@@ -1,5 +1,3 @@
-
-
 // Data Models
 
 export enum UserRole {
@@ -88,14 +86,6 @@ export interface AIResponseSchema {
   suggested_action: 'NONE' | 'REVIEW_TOPIC' | 'FLAG_TEACHER';
 }
 
-export interface ModuleStats {
-  id: string;
-  name: string;
-  mastery: number; // 0-100
-  timeSpent: number; // minutes
-  status: 'LOCKED' | 'IN_PROGRESS' | 'COMPLETED';
-}
-
 export interface StudyResource {
   id: string;
   title: string;
@@ -144,6 +134,7 @@ export interface StudentProfile {
   conversations: ChatConversation[]; // Structured history
   liveSessions: LiveSession[];
   attempts?: QuizAttempt[];
+  savedVisuals: StoredVisual[];
 }
 
 export interface TeacherProfile {
@@ -190,4 +181,54 @@ export interface QuizAttempt {
   moduleId: string;
   score: number;
   maxScore: number;
+}
+
+export interface MindmapNodeData {
+  label: string;
+  depth: number;
+  theme: string;
+  isCollapsed: boolean;
+  hasChildren: boolean;
+  onToggle: (id: string) => void;
+}
+
+export interface MindmapData {
+  title: string;
+  nodes: { id: string; label: string; parentId?: string; theme?: string }[];
+}
+
+export interface InfographicSection {
+  heading: string;
+  content_type: 'list' | 'steps' | 'comparison';
+  visual_hint?: 'chart' | 'timeline' | 'arrow-flow';
+  items: string[];
+}
+
+export interface InfographicData {
+  title: string;
+  highlight_insights?: string[];
+  sections: InfographicSection[];
+}
+
+export interface StoredVisual {
+  id: string;
+  type: 'mindmap' | 'infographic';
+  title: string;
+  data: MindmapData | InfographicData;
+  createdAt: number;
+}
+
+export interface ResearchResult {
+  summary: string;
+  resources: StudyResource[];
+  search_terms?: string[];
+}
+
+export interface PredictedQuestion {
+  id: string;
+  question: string;
+  probability: 'HIGH' | 'MEDIUM' | 'LOW';
+  yearsAppeared: string[];
+  marks: string;
+  tips: string;
 }

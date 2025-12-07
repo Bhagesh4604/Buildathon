@@ -73,7 +73,7 @@ def socratic_chat():
 
     try:
         model = genai.GenerativeModel(
-            model_name='gemini-2.5-pro',
+            model_name='gemini-2.5-flash',
             system_instruction=get_system_instruction(language)
         )
         
@@ -154,7 +154,7 @@ def search_study_resources():
         return jsonify({"error": "Missing query"}), 400
 
     try:
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = f"""
         Based on the user's query: "{query}", provide a concise, one-paragraph summary of the topic.
@@ -199,7 +199,7 @@ def transcribe_audio():
 
     try:
         audio_blob = {"mime_type": mime_type, "data": audio_data}
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(["Transcribe this audio.", audio_blob])
         
         return jsonify({"text": response.text})
@@ -233,7 +233,7 @@ def analyze_code():
         }}
         """
         
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content([prompt, image_blob])
         
         # Strip markdown and parse
@@ -259,7 +259,7 @@ def analyze_exam_trends():
         return jsonify({"error": "Missing topic"}), 400
 
     try:
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         prompt = f"""
         Based on the topic "{topic}", predict 3-5 high-probability exam questions.

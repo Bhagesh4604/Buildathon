@@ -6,7 +6,7 @@ import { cn } from "../lib/utils";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useAuth } from './AuthContext';
-import { apiLogin, apiRegister, getProfile } from '../services/api';
+import { apiLogin, apiRegister, getProfile } from '@/services/api';
 
 type Uniforms = {
   [key: string]: {

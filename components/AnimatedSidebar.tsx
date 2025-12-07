@@ -17,7 +17,8 @@ import {
   Menu,
   Sun,
   Moon,
-  Mic
+  Mic,
+  Wand2
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { cn } from '../lib/utils';
@@ -112,6 +113,14 @@ export const AnimatedSidebar: React.FC<SidebarProps> = ({
       color: 'text-blue-600 dark:text-blue-400',
       gradient: 'from-blue-500 to-cyan-500',
       bgStart: 'bg-blue-50 dark:bg-blue-900/20'
+    },
+    { 
+      id: 'visualStudio', 
+      label: 'Visual Studio', 
+      icon: Wand2,
+      color: 'text-purple-600 dark:text-purple-400',
+      gradient: 'from-purple-500 to-fuchsia-500',
+      bgStart: 'bg-purple-50 dark:bg-purple-900/20'
     },
   ];
 
