@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-h²-ala-tutor",
+  "name": "nxt-tutor",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -15,12 +15,14 @@
     "framer-motion": "^11.13.1",
     "lucide-react": "^0.555.0",
     "re-resizable": "^6.11.2",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "react-draggable": "^4.5.0",
     "reactflow": "^11.11.4",
     "recharts": "^3.5.1",
-    "tailwind-merge": "^2.5.5"
+    "tailwind-merge": "^2.5.5",
+    "@react-three/fiber": "^8.0.0",
+    "three": "^0.150.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,6 +1,6 @@
 {
-  "name": "Copy of H²-ALA Tutor",
-  "description": "A Hybrid Human-AI Learning Assistant focusing on Socratic tutoring, explainable AI logs, and teacher intervention dashboards.",
+  "name": "NXT TUTOR",
+  "description": "A Next-Gen AI Tutor.",
   "requestFramePermissions": [
     "microphone",
     "camera",

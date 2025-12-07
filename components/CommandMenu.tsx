@@ -248,7 +248,7 @@ export function CommandMenu({ onNavigate }: CommandMenuProps) {
                 <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-900/50">
                   <div className="flex items-center justify-between text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold">
                     <span>Quick Navigation</span>
-                    <span>H²-ALA</span>
+                    <span>NXT TUTOR</span>
                   </div>
                 </div>
               </motion.div>

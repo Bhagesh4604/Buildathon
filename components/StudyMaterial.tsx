@@ -1,9 +1,8 @@
-
 import React, { useState, useEffect } from 'react';
-import { Search, Download, ExternalLink, Bookmark, BookmarkCheck, FileText, Globe, Loader2, BookOpen, Trash2, ArrowLeft } from 'lucide-react';
+import { Search, Download, ExternalLink, Bookmark, BookmarkCheck, FileText, Globe, Loader2, BookOpen, Trash2, ArrowLeft, TrendingUp, Sparkles, GraduationCap, AlertCircle } from 'lucide-react';
 import { db } from '../services/mockDatabase';
-import { searchStudyResources, findResources, ResearchResult } from '../services/geminiService';
-import { StudyResource } from '../types';
+import { searchStudyResources, ResearchResult, analyzeExamTrends } from '../services/geminiService';
+import { StudyResource, PredictedQuestion } from '../types';
 
 interface ResourceCardProps {
   resource: StudyResource;
@@ -13,18 +12,7 @@ interface ResourceCardProps {
   isSaved?: boolean;
 }
 
-const ResourceCard: React.FC<ResourceCardProps> = ({ resource, savedMode = false, onSave, onRemove, isSaved = false }) => {
-  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-
-  const handleListen = async () => {
-    setIsGeneratingAudio(true);
-    const audioUrl = await getAudioOverview(resource.title);
-    setAudioUrl(audioUrl);
-    setIsGeneratingAudio(false);
-  };
-
-  return (
+const ResourceCard: React.FC<ResourceCardProps> = ({ resource, savedMode = false, onSave, onRemove, isSaved = false }) => (
   <div className="bg-white p-4 rounded-xl border border-gray-100 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between group">
     <div>
       <div className="flex justify-between items-start mb-2">
@@ -62,19 +50,8 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, savedMode = false
       <span>{resource.type === 'PDF' ? 'Download PDF' : 'Visit Website'}</span>
       <ExternalLink className="w-3 h-3" />
     </a>
-    <button
-      onClick={handleListen}
-      disabled={isGeneratingAudio}
-      className="mt-2 w-full flex items-center justify-center space-x-2 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-medium rounded-lg transition-colors"
-    >
-      {isGeneratingAudio ? <Loader2 className="w-5 h-5 animate-spin" /> : <span>Listen</span>}
-    </button>
-    {audioUrl && (
-      <audio controls src={audioUrl} className="w-full mt-2" />
-    )}
   </div>
 );
-}
 
 interface StudyMaterialProps {
   onBack?: () => void;
@@ -82,11 +59,16 @@ interface StudyMaterialProps {
 
 export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
   const student = db.getCurrentStudent();
-  const [activeTab, setActiveTab] = useState<'search' | 'saved'>('search');
+  const [activeTab, setActiveTab] = useState<'search' | 'saved' | 'predictor'>('search');
   const [query, setQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [savedResources, setSavedResources] = useState<StudyResource[]>([]);
+
+  // Exam Predictor State
+  const [predictorTopic, setPredictorTopic] = useState('');
+  const [isPredicting, setIsPredicting] = useState(false);
+  const [predictions, setPredictions] = useState<PredictedQuestion[]>([]);
 
   // Force refresh saved resources when switching tabs
   useEffect(() => {
@@ -99,13 +81,8 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
     setIsSearching(true);
     setResult(null);
     try {
-      const initialResult = await searchStudyResources(query);
-      if (initialResult.search_terms && initialResult.search_terms.length > 0) {
-        const resources = await findResources(initialResult.search_terms[0]);
-        setResult({ ...initialResult, resources });
-      } else {
-        setResult(initialResult);
-      }
+      const data = await searchStudyResources(query);
+      setResult(data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -113,32 +90,18 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
     }
   };
 
-  const handleFoundResources = async (initialResult: ResearchResult) => {
-    const resources: StudyResource[] = [
-      {
-        id: '1',
-        title: 'Python Basic Syntax - W3Schools',
-        type: 'WEBSITE',
-        uri: 'https://www.w3schools.com/python/python_syntax.asp',
-        source: 'W3Schools',
-      },
-      {
-        id: '2',
-        title: 'Python Syntax and Semantics - Real Python',
-        type: 'WEBSITE',
-        uri: 'https://realpython.com/python-basics/',
-        source: 'Real Python',
-      },
-      {
-        id: '3',
-        title: 'Python Basic Syntax - Tutorialspoint',
-        type: 'PDF',
-        uri: 'https://www.tutorialspoint.com/python/python_basic_syntax.htm',
-        source: 'Tutorialspoint',
-      },
-    ];
-
-    setResult({ ...initialResult, resources });
+  const handlePredict = async () => {
+    if (!predictorTopic.trim()) return;
+    setIsPredicting(true);
+    setPredictions([]);
+    try {
+      const questions = await analyzeExamTrends(predictorTopic);
+      setPredictions(questions);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsPredicting(false);
+    }
   };
 
   const handleSave = (res: StudyResource) => {
@@ -179,6 +142,12 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
               Find Materials
             </button>
             <button
+              onClick={() => setActiveTab('predictor')}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'predictor' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600'}`}
+            >
+              Exam Predictor
+            </button>
+            <button
               onClick={() => setActiveTab('saved')}
               className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${activeTab === 'saved' ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-600'}`}
             >
@@ -206,7 +175,7 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
                <button 
                  onClick={handleSearch}
                  disabled={!query.trim() || isSearching}
-                 className="absolute right-2 top-2 bottom-2 bg-indigo-600 text-white px-6 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors z-10"
+                 className="absolute z-10 right-2 top-2 bottom-2 bg-indigo-600 text-white px-6 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                >
                  {isSearching ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Search'}
                </button>
@@ -253,6 +222,89 @@ export const StudyMaterial: React.FC<StudyMaterialProps> = ({ onBack }) => {
                   <BookOpen className="w-16 h-16 mx-auto text-gray-300 mb-4" />
                   <p className="text-xl font-medium text-gray-400">Search for any university notes or papers.</p>
                </div>
+            )}
+          </div>
+        ) : activeTab === 'predictor' ? (
+          /* EXAM PREDICTOR TAB */
+          <div className="max-w-4xl mx-auto space-y-8">
+            <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-2xl p-8 text-white shadow-xl relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+               <h2 className="text-2xl font-bold mb-2 flex items-center">
+                 <Sparkles className="w-6 h-6 mr-2 text-yellow-400" />
+                 Exam Question Predictor
+               </h2>
+               <p className="text-indigo-100 mb-6 max-w-xl">
+                 Our AI analyzes historical trends from university question papers to predict high-probability questions for your upcoming exams.
+               </p>
+               
+               <div className="flex space-x-2">
+                 <input 
+                   type="text" 
+                   value={predictorTopic}
+                   onChange={(e) => setPredictorTopic(e.target.value)}
+                   onKeyDown={(e) => e.key === 'Enter' && handlePredict()}
+                   placeholder="Enter Subject (e.g., Data Structures, Fluid Mechanics)"
+                   className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-indigo-200 focus:outline-none focus:bg-white/20 focus:ring-2 focus:ring-white/50"
+                 />
+                 <button 
+                   onClick={handlePredict}
+                   disabled={!predictorTopic.trim() || isPredicting}
+                   className="px-6 py-3 bg-white text-indigo-900 rounded-xl font-bold hover:bg-indigo-50 disabled:opacity-50 transition-colors flex items-center"
+                 >
+                   {isPredicting ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <TrendingUp className="w-5 h-5 mr-2" />}
+                   Analyze Trends
+                 </button>
+               </div>
+            </div>
+
+            {predictions.length > 0 && (
+              <div className="space-y-4 animate-fade-in">
+                <h3 className="text-xl font-bold text-gray-800 flex items-center">
+                  <GraduationCap className="w-6 h-6 mr-2 text-indigo-600" />
+                  Predicted Important Questions
+                </h3>
+                
+                <div className="grid gap-4">
+                  {predictions.map((q) => (
+                    <div key={q.id} className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                       <div className={`absolute top-0 right-0 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-bl-xl ${
+                         q.probability === 'HIGH' ? 'bg-red-100 text-red-600' : 
+                         q.probability === 'MEDIUM' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'
+                       }`}>
+                         {q.probability} Probability
+                       </div>
+                       
+                       <div className="flex justify-between items-start mb-2 pr-24">
+                          <h4 className="text-lg font-semibold text-gray-800">{q.question}</h4>
+                       </div>
+                       
+                       <div className="flex flex-wrap gap-2 mb-3">
+                          {q.yearsAppeared.map(year => (
+                            <span key={year} className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-medium">
+                               {year}
+                            </span>
+                          ))}
+                          <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded text-xs font-bold border border-indigo-100">
+                             {q.marks} Marks
+                          </span>
+                       </div>
+                       
+                       <div className="flex items-start bg-yellow-50 p-3 rounded-lg">
+                          <AlertCircle className="w-4 h-4 text-yellow-600 mt-0.5 mr-2 shrink-0" />
+                          <p className="text-sm text-yellow-800 italic">
+                             <strong>Tip:</strong> {q.tips}
+                          </p>
+                       </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {!isPredicting && predictions.length === 0 && (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl">
+                 <p className="text-gray-400">Enter a subject above to generate predictions based on previous year patterns.</p>
+              </div>
             )}
           </div>
         ) : (

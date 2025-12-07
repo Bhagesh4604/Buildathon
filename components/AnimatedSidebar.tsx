@@ -113,14 +113,6 @@ export const AnimatedSidebar: React.FC<SidebarProps> = ({
       gradient: 'from-blue-500 to-cyan-500',
       bgStart: 'bg-blue-50 dark:bg-blue-900/20'
     },
-    { 
-      id: 'mindmap', 
-      label: 'Mindmap', 
-      icon: BrainCircuit,
-      color: 'text-cyan-600 dark:text-cyan-400',
-      gradient: 'from-cyan-500 to-sky-500',
-      bgStart: 'bg-cyan-50 dark:bg-cyan-900/20'
-    },
   ];
 
   const teacherItems: MenuItem[] = [
@@ -159,7 +151,7 @@ export const AnimatedSidebar: React.FC<SidebarProps> = ({
               "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 shadow-lg",
               role === UserRole.STUDENT ? "bg-gradient-to-br from-indigo-600 to-violet-600" : "bg-gradient-to-br from-purple-600 to-fuchsia-600"
             )}>
-              <span className="text-white font-bold text-xl font-mono">H</span>
+              <img src="/NXT TUTOR.jpeg" alt="NXT TUTOR Logo" className="w-full h-full object-cover rounded-xl"/>
             </div>
             {!isCollapsed && (
               <motion.div 
@@ -181,7 +173,7 @@ export const AnimatedSidebar: React.FC<SidebarProps> = ({
                 className="overflow-hidden"
               >
                 <span className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-400 block pl-1">
-                   H²-ALA
+                   NXT TUTOR
                 </span>
                 <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium tracking-widest uppercase pl-1">
                    {role === UserRole.STUDENT ? 'Student Portal' : 'Faculty Admin'}

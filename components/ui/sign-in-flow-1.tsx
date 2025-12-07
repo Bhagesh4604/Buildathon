@@ -2,11 +2,11 @@
 
 import React, { useState,useMemo, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { cn } from "../lib/utils";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
+
 import * as THREE from "three";
-import { useAuth } from './AuthContext';
-import { apiLogin, apiRegister, getProfile } from '../services/api';
 
 type Uniforms = {
   [key: string]: {
@@ -29,15 +29,15 @@ interface ShaderProps {
 interface SignInPageProps {
   className?: string;
 }
-
-const CanvasRevealEffect = ({
+      
+export const CanvasRevealEffect = ({
   animationSpeed = 10,
   opacities = [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8, 1],
   colors = [[0, 255, 255]],
   containerClassName,
   dotSize,
   showGradient = true,
-  reverse = false,
+  reverse = false, // This controls the direction
 }: {
   animationSpeed?: number;
   opacities?: number[];
@@ -45,10 +45,10 @@ const CanvasRevealEffect = ({
   containerClassName?: string;
   dotSize?: number;
   showGradient?: boolean;
-  reverse?: boolean;
+  reverse?: boolean; // This prop determines the direction
 }) => {
   return (
-    <div className={cn("h-full relative w-full", containerClassName)}>
+    <div className={cn("h-full relative w-full", containerClassName)}> {/* Removed bg-white */}
       <div className="h-full w-full">
         <DotMatrix
           colors={colors ?? [[0, 255, 255]]}
@@ -56,6 +56,7 @@ const CanvasRevealEffect = ({
           opacities={
             opacities ?? [0.3, 0.3, 0.3, 0.5, 0.5, 0.5, 0.8, 0.8, 0.8, 1]
           }
+          // Pass reverse state and speed via string flags in the empty shader prop
           shader={`
             ${reverse ? 'u_reverse_active' : 'false'}_;
             animation_speed_factor_${animationSpeed.toFixed(1)}_;
@@ -64,11 +65,14 @@ const CanvasRevealEffect = ({
         />
       </div>
       {showGradient && (
+        // Adjust gradient colors if needed based on background (was bg-white, now likely uses containerClassName bg)
+        // Example assuming a dark background like the SignInPage uses:
          <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent" />
       )}
     </div>
   );
 };
+
     
 interface DotMatrixProps {
   colors?: number[][];
@@ -84,9 +88,10 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
   opacities = [0.04, 0.04, 0.04, 0.04, 0.04, 0.08, 0.08, 0.08, 0.08, 0.14],
   totalSize = 20,
   dotSize = 2,
-  shader = "",
+  shader = "", // This shader string will now contain the animation logic
   center = ["x", "y"],
 }) => {
+  // ... uniforms calculation remains the same for colors, opacities, etc.
   const uniforms = React.useMemo(() => {
     let colorsArray = [
       colors[0],
@@ -137,14 +142,15 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
         type: "uniform1f",
       },
       u_reverse: {
-        value: shader.includes("u_reverse_active") ? 1 : 0,
-        type: "uniform1i",
+        value: shader.includes("u_reverse_active") ? 1 : 0, // Convert boolean to number (1 or 0)
+        type: "uniform1i", // Use 1i for bool in WebGL1/GLSL100, or just bool for GLSL300+ if supported
       },
     };
-  }, [colors, opacities, totalSize, dotSize, shader]);
+  }, [colors, opacities, totalSize, dotSize, shader]); // Add shader to dependencies
 
   return (
     <Shader
+      // The main animation logic is now built *outside* the shader prop
       source={`
         precision mediump float;
         in vec2 fragCoord;
@@ -155,7 +161,7 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
         uniform float u_total_size;
         uniform float u_dot_size;
         uniform vec2 u_resolution;
-        uniform int u_reverse;
+        uniform int u_reverse; // Changed from bool to int
 
         out vec4 fragColor;
 
@@ -186,7 +192,7 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
             vec2 st2 = vec2(int(st.x / u_total_size), int(st.y / u_total_size));
 
             float frequency = 5.0;
-            float show_offset = random(st2);
+            float show_offset = random(st2); // Used for initial opacity random pick and color
             float rand = random(st2 * floor((u_time / frequency) + show_offset + frequency));
             opacity *= u_opacities[int(rand * 10.0)];
             opacity *= 1.0 - step(u_dot_size / u_total_size, fract(st.x / u_total_size));
@@ -194,12 +200,16 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
 
             vec3 color = u_colors[int(show_offset * 6.0)];
 
-            float animation_speed_factor = 0.5;
+            // --- Animation Timing Logic ---
+            float animation_speed_factor = 0.5; // Extract speed from shader string
             vec2 center_grid = u_resolution / 2.0 / u_total_size;
             float dist_from_center = distance(center_grid, st2);
 
+            // Calculate timing offset for Intro (from center)
             float timing_offset_intro = dist_from_center * 0.01 + (random(st2) * 0.15);
 
+            // Calculate timing offset for Outro (from edges)
+            // Max distance from center to a corner of the grid
             float max_grid_dist = distance(center_grid, vec2(0.0, 0.0));
             float timing_offset_outro = (max_grid_dist - dist_from_center) * 0.02 + (random(st2 + 42.0) * 0.2);
 
@@ -207,17 +217,21 @@ const DotMatrix: React.FC<DotMatrixProps> = ({
             float current_timing_offset;
             if (u_reverse == 1) {
                 current_timing_offset = timing_offset_outro;
+                 // Outro logic: opacity starts high, goes to 0 when time passes offset
                  opacity *= 1.0 - step(current_timing_offset, u_time * animation_speed_factor);
+                 // Clamp for fade-out transition
                  opacity *= clamp((step(current_timing_offset + 0.1, u_time * animation_speed_factor)) * 1.25, 1.0, 1.25);
             } else {
                 current_timing_offset = timing_offset_intro;
+                 // Intro logic: opacity starts 0, goes to base opacity when time passes offset
                  opacity *= step(current_timing_offset, u_time * animation_speed_factor);
+                 // Clamp for fade-in transition
                  opacity *= clamp((1.0 - step(current_timing_offset + 0.1, u_time * animation_speed_factor)) * 1.25, 1.0, 1.25);
             }
 
 
             fragColor = vec4(color, opacity);
-            fragColor.rgb *= fragColor.a;
+            fragColor.rgb *= fragColor.a; // Premultiply alpha
         }`}
       uniforms={uniforms}
       maxFps={60}
@@ -296,10 +310,11 @@ const ShaderMaterial = ({
     preparedUniforms["u_time"] = { value: 0, type: "1f" };
     preparedUniforms["u_resolution"] = {
       value: new THREE.Vector2(size.width * 2, size.height * 2),
-    };
+    }; // Initialize u_resolution
     return preparedUniforms;
   };
 
+  // Shader material
   const material = useMemo(() => {
     const materialObject = new THREE.ShaderMaterial({
       vertexShader: `
@@ -357,7 +372,7 @@ const AnimatedNavLink = ({ href, children }: { href: string; children: React.Rea
   );
 };
 
-function MiniNavbar({ setIsSignUp, isSignUp }: { setIsSignUp: (value: boolean) => void, isSignUp: boolean }) {
+function MiniNavbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [headerShapeClass, setHeaderShapeClass] = useState('rounded-full');
   const shapeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -402,7 +417,7 @@ function MiniNavbar({ setIsSignUp, isSignUp }: { setIsSignUp: (value: boolean) =
   ];
 
   const loginButtonElement = (
-    <button onClick={() => setIsSignUp(false)} className="px-4 py-2 sm:px-3 text-xs sm:text-sm border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 rounded-full hover:border-white/50 hover:text-white transition-colors duration-200 w-full sm:w-auto">
+    <button className="px-4 py-2 sm:px-3 text-xs sm:text-sm border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 rounded-full hover:border-white/50 hover:text-white transition-colors duration-200 w-full sm:w-auto">
       LogIn
     </button>
   );
@@ -415,7 +430,7 @@ function MiniNavbar({ setIsSignUp, isSignUp }: { setIsSignUp: (value: boolean) =
                      opacity-40 filter blur-lg pointer-events-none
                      transition-all duration-300 ease-out
                      group-hover:opacity-60 group-hover:blur-xl group-hover:-m-3"></div>
-       <button onClick={() => setIsSignUp(true)} className="relative z-10 px-4 py-2 sm:px-3 text-xs sm:text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-gray-200 hover:to-gray-400 transition-all duration-200 w-full sm:w-auto">
+       <button className="relative z-10 px-4 py-2 sm:px-3 text-xs sm:text-sm font-semibold text-black bg-gradient-to-br from-gray-100 to-gray-300 rounded-full hover:from-gray-200 hover:to-gray-400 transition-all duration-200 w-full sm:w-auto">
          Signup
        </button>
     </div>
@@ -475,54 +490,81 @@ function MiniNavbar({ setIsSignUp, isSignUp }: { setIsSignUp: (value: boolean) =
   );
 }
 
-export const AuthPage = ({ className }: SignInPageProps) => {
+export const SignInPage = ({ className }: SignInPageProps) => {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [step, setStep] = useState<"email" | "success">("email");
+  const [step, setStep] = useState<"email" | "code" | "success">("email");
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
+  const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [initialCanvasVisible, setInitialCanvasVisible] = useState(true);
   const [reverseCanvasVisible, setReverseCanvasVisible] = useState(false);
-  const { login } = useAuth();
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const { access_token } = await apiLogin(email, password);
-      localStorage.setItem('token', access_token);
-      const user = await getProfile(access_token);
-      login(user, user.role);
-    } catch (error) {
-      console.error(error);
-    }
-  };
-  
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await apiRegister(name, email, password);
-      setIsSignUp(false);
-    } catch (error) {
-      console.error(error);
+    if (email) {
+      setStep("code");
     }
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email && password) {
-      if (isSignUp) {
-        if (name) {
-          handleSignUp(e);
+  // Focus first input when code screen appears
+  useEffect(() => {
+    if (step === "code") {
+      setTimeout(() => {
+        codeInputRefs.current[0]?.focus();
+      }, 500);
+    }
+  }, [step]);
+
+  const handleCodeChange = (index: number, value: string) => {
+    if (value.length <= 1) {
+      const newCode = [...code];
+      newCode[index] = value;
+      setCode(newCode);
+      
+      // Focus next input if value is entered
+      if (value && index < 5) {
+        codeInputRefs.current[index + 1]?.focus();
+      }
+      
+      // Check if code is complete
+      if (index === 5 && value) {
+        const isComplete = newCode.every(digit => digit.length === 1);
+        if (isComplete) {
+          // First show the new reverse canvas
+          setReverseCanvasVisible(true);
+          
+          // Then hide the original canvas after a small delay
+          setTimeout(() => {
+            setInitialCanvasVisible(false);
+          }, 50);
+          
+          // Transition to success screen after animation
+          setTimeout(() => {
+            setStep("success");
+          }, 2000);
         }
-      } else {
-        handleSignIn(e);
       }
     }
   };
-  
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Backspace" && !code[index] && index > 0) {
+      codeInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleBackClick = () => {
+    setStep("email");
+    setCode(["", "", "", "", "", ""]);
+    // Reset animations if going back
+    setReverseCanvasVisible(false);
+    setInitialCanvasVisible(true);
+  };
+
   return (
     <div className={cn("flex w-[100%] flex-col min-h-screen bg-black relative", className)}>
       <div className="absolute inset-0 z-0">
+        {/* Initial canvas (forward animation) */}
         {initialCanvasVisible && (
           <div className="absolute inset-0">
             <CanvasRevealEffect
@@ -538,6 +580,7 @@ export const AuthPage = ({ className }: SignInPageProps) => {
           </div>
         )}
         
+        {/* Reverse canvas (appears when code is complete) */}
         {reverseCanvasVisible && (
           <div className="absolute inset-0">
             <CanvasRevealEffect
@@ -557,10 +600,14 @@ export const AuthPage = ({ className }: SignInPageProps) => {
         <div className="absolute top-0 left-0 right-0 h-1/3 bg-gradient-to-b from-black to-transparent" />
       </div>
       
+      {/* Content Layer */}
       <div className="relative z-10 flex flex-col flex-1">
-        <MiniNavbar setIsSignUp={setIsSignUp} isSignUp={isSignUp} />
+        {/* Top navigation */}
+        <MiniNavbar />
 
+        {/* Main content container */}
         <div className="flex flex-1 flex-col lg:flex-row ">
+          {/* Left side (form) */}
           <div className="flex-1 flex flex-col justify-center items-center">
             <div className="w-full mt-[150px] max-w-sm">
               <AnimatePresence mode="wait">
@@ -574,13 +621,13 @@ export const AuthPage = ({ className }: SignInPageProps) => {
                     className="space-y-6 text-center"
                   >
                     <div className="space-y-1">
-                      <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">{isSignUp ? "Create an Account" : "Welcome Back"}</h1>
+                      <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">Welcome Developer</h1>
                       <p className="text-[1.8rem] text-white/70 font-light">Your sign in component</p>
                     </div>
                     
                     
                     <div className="space-y-4">
-                      <button onClick={() => alert("Google Sign in not implemented yet")} className="backdrop-blur-[2px] w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-full py-3 px-4 transition-colors">
+                      <button className="backdrop-blur-[2px] w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 rounded-full py-3 px-4 transition-colors">
                         <span className="text-lg">G</span>
                         <span>Sign in with Google</span>
                       </button>
@@ -591,51 +638,121 @@ export const AuthPage = ({ className }: SignInPageProps) => {
                         <div className="h-px bg-white/10 flex-1" />
                       </div>
                       
-                      <form onSubmit={handleFormSubmit}>
-                        {isSignUp && (
-                          <div className="relative mb-4">
-                            <input 
-                              type="text" 
-                              placeholder="Name"
-                              value={name}
-                              onChange={(e) => setName(e.target.value)}
-                              className="w-full backdrop-blur-[1px] text-gray-900 border-1 border-white/10 rounded-full py-3 px-4 focus:outline-none focus:border focus:border-white/30 text-center placeholder:text-gray-600"
-                              required
-                            />
-                          </div>
-                        )}
-                        <div className="relative mb-4">
+                      <form onSubmit={handleEmailSubmit}>
+                        <div className="relative">
                           <input 
                             type="email" 
-                            placeholder="Email"
+                            placeholder="info@gmail.com"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full backdrop-blur-[1px] text-gray-900 border-1 border-white/10 rounded-full py-3 px-4 focus:outline-none focus:border focus:border-white/30 text-center placeholder:text-gray-600"
+                            className="w-full backdrop-blur-[1px] text-white border-1 border-white/10 rounded-full py-3 px-4 focus:outline-none focus:border focus:border-white/30 text-center"
                             required
                           />
+                          <button 
+                            type="submit"
+                            className="absolute right-1.5 top-1.5 text-white w-9 h-9 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors group overflow-hidden"
+                          >
+                            <span className="relative w-full h-full block overflow-hidden">
+                              <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 group-hover:translate-x-full">
+                                →
+                              </span>
+                              <span className="absolute inset-0 flex items-center justify-center transition-transform duration-300 -translate-x-full group-hover:translate-x-0">
+                                →
+                              </span>
+                            </span>
+                          </button>
                         </div>
-                        <div className="relative mb-4">
-                          <input 
-                            type="password" 
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full backdrop-blur-[1px] text-gray-900 border-1 border-white/10 rounded-full py-3 px-4 focus:outline-none focus:border focus:border-white/30 text-center placeholder:text-gray-600"
-                            required
-                          />
-                        </div>
-                        <button 
-                          type="submit"
-                          className="w-full mt-4 rounded-full bg-white text-black font-medium py-3 hover:bg-white/90 transition-colors"
-                        >
-                          {isSignUp ? 'Sign Up' : 'Sign In'}
-                        </button>
                       </form>
                     </div>
                     
                     <p className="text-xs text-white/40 pt-10">
-                      By signing up, you agree to the <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors" target="_blank" rel="noopener noreferrer">MSA</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors" target="_blank" rel="noopener noreferrer">Product Terms</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors" target="_blank" rel="noopener noreferrer">Policies</a>, <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors" target="_blank" rel="noopener noreferrer">Privacy Notice</a>, and <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors" target="_blank" rel="noopener noreferrer">Cookie Notice</a>.
+                      By signing up, you agree to the <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">MSA</Link>, <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Product Terms</Link>, <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Policies</Link>, <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Privacy Notice</Link>, and <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Cookie Notice</Link>.
                     </p>
+                  </motion.div>
+                ) : step === "code" ? (
+                  <motion.div 
+                    key="code-step"
+                    initial={{ opacity: 0, x: 100 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 100 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                    className="space-y-6 text-center"
+                  >
+                    <div className="space-y-1">
+                      <h1 className="text-[2.5rem] font-bold leading-[1.1] tracking-tight text-white">We sent you a code</h1>
+                      <p className="text-[1.25rem] text-white/50 font-light">Please enter it</p>
+                    </div>
+                    
+                    <div className="w-full">
+                      <div className="relative rounded-full py-4 px-5 border border-white/10 bg-transparent">
+                        <div className="flex items-center justify-center">
+                          {code.map((digit, i) => (
+                            <div key={i} className="flex items-center">
+                              <div className="relative">
+                                <input
+                                  ref={(el) => {
+                                    codeInputRefs.current[i] = el;
+                                  }}
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength={1}
+                                  value={digit}
+                                  onChange={e => handleCodeChange(i, e.target.value)}
+                                  onKeyDown={e => handleKeyDown(i, e)}
+                                  className="w-8 text-center text-xl bg-transparent text-white border-none focus:outline-none focus:ring-0 appearance-none"
+                                  style={{ caretColor: 'transparent' }}
+                                />
+                                {!digit && (
+                                  <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center pointer-events-none">
+                                    <span className="text-xl text-white">0</span>
+                                  </div>
+                                )}
+                              </div>
+                              {i < 5 && <span className="text-white/20 text-xl">|</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <motion.p 
+                        className="text-white/50 hover:text-white/70 transition-colors cursor-pointer text-sm"
+                        whileHover={{ scale: 1.02 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        Resend code
+                      </motion.p>
+                    </div>
+                    
+                    <div className="flex w-full gap-3">
+                      <motion.button 
+                        onClick={handleBackClick}
+                        className="rounded-full bg-white text-black font-medium px-8 py-3 hover:bg-white/90 transition-colors w-[30%]"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        Back
+                      </motion.button>
+                      <motion.button 
+                        className={`flex-1 rounded-full font-medium py-3 border transition-all duration-300 ${
+                          code.every(d => d !== "") 
+                          ? "bg-white text-black border-transparent hover:bg-white/90 cursor-pointer" 
+                          : "bg-[#111] text-white/50 border-white/10 cursor-not-allowed"
+                        }`}
+                        disabled={!code.every(d => d !== "")}
+                      >
+                        Continue
+                      </motion.button>
+                    </div>
+                    
+                    <div className="pt-16">
+                      <p className="text-xs text-white/40">
+                        By signing up, you agree to the <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">MSA</Link>, <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Product Terms</Link>, <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Policies</Link>, <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Privacy Notice</Link>, and <Link href="#" className="underline text-white/40 hover:text-white/60 transition-colors">Cookie Notice</Link>.
+                      </p>
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div 
@@ -668,7 +785,6 @@ export const AuthPage = ({ className }: SignInPageProps) => {
                       animate={{ opacity: 1 }}
                       transition={{ delay: 1 }}
                       className="w-full rounded-full bg-white text-black font-medium py-3 hover:bg-white/90 transition-colors"
-                      onClick={() => login({ id: '123', name: 'Demo User', email: email, role: 'STUDENT' }, 'STUDENT')}
                     >
                       Continue to Dashboard
                     </motion.button>

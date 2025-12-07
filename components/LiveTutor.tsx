@@ -344,7 +344,7 @@ export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
           ],
           inputAudioTranscription: {},
           outputAudioTranscription: {},
-          systemInstruction: `You are H²-ALA, an expert AI Multi-Subject Tutor capable of teaching Coding, Math, Science, History, and more.
+          systemInstruction: `You are NXT TUTOR, an expert AI Multi-Subject Tutor capable of teaching Coding, Math, Science, History, and more.
           
           CAPABILITIES:
           1. **Explain:** Verbally explain concepts simply in ${selectedLanguage}.
@@ -753,12 +753,12 @@ writeNotes
           <div className="relative w-48 h-48">
             <canvas ref={avatarCanvasRef} width={300} height={300} className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 pointer-events-none"/>
             <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-gray-800 shadow-2xl mx-auto top-8 bg-gray-800">
-               <img src="https://api.dicebear.com/7.x/bottts/svg?seed=H2-ALA-Tutor&backgroundColor=6366f1" alt="AI Tutor" className="w-full h-full object-cover"/>
+               <img src="https://api.dicebear.com/7.x/bottts/svg?seed=NXT-TUTOR&backgroundColor=6366f1" alt="AI Tutor" className="w-full h-full object-cover"/>
             </div>
           </div>
           
           <div className="mt-8 text-center min-h-[60px]">
-             <h2 className="text-2xl font-bold tracking-tight">H²-ALA Live Tutor</h2>
+             <h2 className="text-2xl font-bold tracking-tight">NXT TUTOR Live Tutor</h2>
              {!errorMessage ? (
                <p className={`text-sm mt-2 font-medium ${isConnected ? 'text-indigo-400' : 'text-gray-400'}`}>
                  {isGeneratingVideo ? 'Generating Visuals...' : 
