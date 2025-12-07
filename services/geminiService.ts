@@ -201,6 +201,23 @@ export const analyzeExamTrends = async (topic: string): Promise<PredictedQuestio
 
 // --- Visual Studio Generators ---
 
+export const visualizeText = async (text: string): Promise<AIResponseSchema | null> => {
+  try {
+    const response = await fetch(`${API_URL}/ai/visualize-text`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ text }),
+    });
+    if (!response.ok) throw new Error('Network response was not ok');
+    return await response.json();
+  } catch (error) {
+    console.error("Visualize Text Error", error);
+    return null;
+  }
+};
+
 export const expandTopic = async (topic: string): Promise<MindmapData | null> => {
   try {
     const response = await fetch(`${API_URL}/ai/expand-topic`, {

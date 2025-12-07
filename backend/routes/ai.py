@@ -433,3 +433,59 @@ def expand_topic():
     except Exception as e:
         print(f"An error occurred during mindmap expansion: {e}")
         return jsonify({"error": "Failed to generate expanded mindmap"}), 500
+
+def get_visualize_instruction():
+    return f"""
+You are an expert data visualizer and educator. Your task is to take a given text and explain it visually, step-by-step, as if you were drawing on a whiteboard.
+
+### CORE INSTRUCTIONS:
+1.  **Break It Down Visually:** Your primary goal is to explain the concept in a series of small, easy-to-understand visual steps.
+2.  **Use Mermaid for Diagrams:** For concepts that benefit from diagrams (e.g., flowcharts, sequence diagrams, class diagrams), use Mermaid syntax. Wrap Mermaid code in ````mermaid ... ```` blocks.
+3.  **Use LaTeX for Math:** When explaining math or science concepts, always use LaTeX for formulas. Wrap equations in ` for inline math and `$` for block math.
+4.  **Use Markdown Code Blocks for Code:** When explaining code, always wrap it in markdown code blocks with the language specified (e.g., ````python ... ````).
+
+### OUTPUT SCHEMA:
+You MUST respond with a single valid JSON object. The JSON object must have the following fields:
+- "steps": An array of strings, where each string is a small step in the explanation.
+- "tutor_response": A concluding remark.
+- "pedagogical_reasoning": "Visual explanation generated."
+- "detected_sentiment": "NEUTRAL"
+- "suggested_action": "NONE"
+"""
+
+@bp.route('/visualize-text', methods=['POST'])
+def visualize_text():
+    data = request.get_json()
+    text = data.get('text')
+
+    if not text:
+        return jsonify({"error": "Missing text"}), 400
+
+    try:
+        model = genai.GenerativeModel(
+            model_name='gemini-2.5-flash',
+            system_instruction=get_visualize_instruction()
+        )
+        
+        response = model.generate_content(text)
+
+        print(f"Gemini API response: {response.text}")
+
+        # Strip the markdown wrapper if it exists
+        text_to_parse = response.text
+        if text_to_parse.startswith("```json"):
+            text_to_parse = text_to_parse[7:]
+        if text_to_parse.endswith("```"):
+            text_to_parse = text_to_parse[:-3]
+
+        try:
+            response_json = json.loads(text_to_parse)
+        except json.JSONDecodeError:
+            print("Error: Failed to decode JSON from Gemini API response.")
+            return jsonify({"error": "The AI model returned an invalid response."}), 500
+        
+        return jsonify(response_json)
+
+    except Exception as e:
+        print(f"An error occurred during text visualization: {e}")
+        return jsonify({"error": "Failed to generate visual explanation"}), 500

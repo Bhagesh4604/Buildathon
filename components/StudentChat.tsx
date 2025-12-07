@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Send, Bot, User, Loader2, Globe, Bell, Volume2, Square, StopCircle, Plus, MessageSquare, ChevronLeft, Menu, PanelLeftClose, PanelLeftOpen, Paperclip, Mic, X, Image as ImageIcon, FileText } from 'lucide-react';
-import { getSocraticResponse, getAudioOverview, generateChatTitle, transcribeAudio } from '@/services/geminiService';
+import { getSocraticResponse, getAudioOverview, generateChatTitle, transcribeAudio, visualizeText } from '@/services/geminiService';
 import { db } from '@/services/mockDatabase';
 import { Message, UserRole, Sentiment, SupportedLanguage, TeacherMessage, ChatConversation, Attachment } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -425,6 +425,47 @@ export const StudentChat: React.FC = () => {
     }
   };
 
+  const handleVisualize = async () => {
+    if (!input.trim() || isTyping || !activeConvId) {
+      return;
+    }
+
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: `Visualize: ${input}`,
+      timestamp: Date.now(),
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    db.saveChatMessage(currentStudent.id, activeConvId, userMsg);
+    
+    const textToVisualize = input;
+    setInput('');
+    setIsTyping(true);
+
+    try {
+      const response = await visualizeText(textToVisualize);
+
+      if (response) {
+        const aiMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'model',
+          content: response.tutor_response,
+          steps: response.steps || [],
+          isTyping: response.steps && response.steps.length > 0,
+          timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        db.saveChatMessage(currentStudent.id, activeConvId, aiMsg);
+      }
+    } catch (error) {
+      console.error("Visualize error", error);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   // Group Conversations by Time
   const groupedConversations = conversations.reduce((groups, conv) => {
     const date = new Date(conv.updatedAt);
@@ -709,13 +750,22 @@ export const StudentChat: React.FC = () => {
             
             {/* Mic/Send Button Toggle */}
             {input.trim() || attachment ? (
-               <button
-                 onClick={handleSend}
-                 disabled={isTyping}
-                 className="p-3.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
-               >
-                 <Send className="w-5 h-5" />
-               </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleSend}
+                  disabled={isTyping}
+                  className="p-3.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
+                >
+                  <Send className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={handleVisualize}
+                  disabled={isTyping}
+                  className="p-3.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
+                >
+                  <Sparkles className="w-5 h-5" />
+                </button>
+              </div>
             ) : (
                <button
                  onClick={isRecording ? stopRecording : startRecording}
