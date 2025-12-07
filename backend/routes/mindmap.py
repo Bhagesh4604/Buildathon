@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 import google.generativeai as genai
 import os
 import json
+import traceback
 
 bp = Blueprint('mindmap', __name__)
 
@@ -134,6 +135,7 @@ def generate_mindmap():
         return jsonify(mindmap_json)
 
     except Exception as e:
-        print(f"An error occurred during mindmap generation: {e}")
+        print("An error occurred during mindmap generation:")
+        traceback.print_exc()
         return jsonify({"error": "Failed to generate mindmap"}), 500
 
