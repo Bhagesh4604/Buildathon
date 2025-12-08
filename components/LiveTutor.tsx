@@ -53,6 +53,7 @@ const LogArea: React.FC<{ logs: string[] }> = ({ logs }) => (
 );
 
 export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
+  const [logMessages, setLogMessages] = useState<string[]>([]);
   const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
@@ -141,7 +142,7 @@ export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
   const addLog = (message: string) => {
     setLogMessages(prev => [...prev.slice(-5), `${new Date().toLocaleTimeString()}: ${message}`]);
   };
-
+  
   useEffect(() => {
     setSelectedLanguage(student.preferredLanguage);
     setSelectedVoice(student.preferredVoice || AIVoice.Kore);
@@ -339,7 +340,7 @@ export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
         return;
     }
     addLog("Requesting user media (mic/camera)...");
-    const stream = await navigator.mediaDevices.getUserMedia({ 
+    const stream = await navigator.mediaDevices.getUserMedia({
         audio: true, 
         video: true 
     });
@@ -549,7 +550,7 @@ writeNotes
 
       try {
         sessionRef.current.sendRealtimeInput({ media: pcmBlob });
-      } catch (err) {}
+      } catch (err) {} // ignore
     };
 
     source.connect(processor);
@@ -976,7 +977,7 @@ writeNotes
         )}
 
         <div className="absolute bottom-6 right-6 w-48 h-36 bg-gray-800 rounded-xl overflow-hidden border-2 border-gray-700 shadow-lg transition-transform hover:scale-105 z-20">
-           <video ref={(el) => { if (el && screenStreamRef.current) el.srcObject = screenStreamRef.current; }} autoPlay muted className="w-full h-full object-cover mirror"/>
+           <video ref={videoRef} autoPlay muted playsInline className={`w-full h-full object-cover mirror ${!isCameraOn ? 'hidden' : ''}`}/>
            {!isCameraOn && <div className="w-full h-full flex items-center justify-center text-gray-500 bg-gray-800"><VideoOff className="w-8 h-8" /></div>}
         </div>
 
@@ -1033,6 +1034,7 @@ writeNotes
              </div>
           </div>
         )}
+      <LogArea logs={logMessages} />
       </div>
 
       <div className="bg-gray-800 p-6 flex justify-center items-center space-x-6 border-t border-gray-700 z-20">

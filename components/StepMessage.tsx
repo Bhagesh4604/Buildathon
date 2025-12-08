@@ -24,7 +24,7 @@ const StepMessage: React.FC<{ message: Message }> = ({ message }) => {
 
   useEffect(() => {
     if (message.steps && message.steps.length > 0) {
-      const allSteps = message.steps;
+      const allSteps = message.steps.filter(s => typeof s === 'string');
       let currentStep = 0;
       setDisplayedSteps([]);
 
