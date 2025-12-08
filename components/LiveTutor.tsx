@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { GoogleGenAI, LiveServerMessage, Modality, Type, FunctionDeclaration } from "@google/genai";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Loader2, Volume2, AlertCircle, Clapperboard, X, Play, Globe, Monitor, StopCircle, User, ArrowLeft, History, FileText, MousePointer2, CheckCircle, Code2, Terminal, Maximize2, Minimize2, BookOpen, PenTool } from 'lucide-react';
@@ -496,7 +497,7 @@ writeNotes
           },
           onclose: (e) => {
             console.log("Gemini Live Closed", e);
-            addLog("Socket closed.");
+            addLog(`Socket closed. Code: ${e.code}, Reason: ${e.reason}`);
             handleDisconnect();
           },
           onerror: (err: any) => {
