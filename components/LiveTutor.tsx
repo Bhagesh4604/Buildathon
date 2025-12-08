@@ -41,6 +41,17 @@ const writeNotesDeclaration: FunctionDeclaration = {
   }
 };
 
+const LogArea: React.FC<{ logs: string[] }> = ({ logs }) => (
+  <div className="absolute bottom-24 left-6 bg-gray-800/80 backdrop-blur-sm p-4 rounded-xl shadow-lg z-30 max-w-sm max-h-48 overflow-y-auto text-xs">
+    <h3 className="font-bold mb-2 text-gray-300">Live Session Log</h3>
+    <div className="space-y-1">
+      {logs.map((log, index) => (
+        <p key={index} className="text-gray-400 font-mono">{`> ${log}`}</p>
+      ))}
+    </div>
+  </div>
+);
+
 export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
   const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -126,6 +137,10 @@ export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
   const [selectedVoice, setSelectedVoice] = useState<AIVoice>(student.preferredVoice || AIVoice.Kore);
 
   const apiKey = import.meta.env.VITE_API_KEY;
+
+  const addLog = (message: string) => {
+    setLogMessages(prev => [...prev.slice(-5), `${new Date().toLocaleTimeString()}: ${message}`]);
+  };
 
   useEffect(() => {
     setSelectedLanguage(student.preferredLanguage);
@@ -282,8 +297,11 @@ export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
   };
 
   const startSession = async () => {
+    addLog("Attempting to start session...");
     if (!apiKey) {
-      setErrorMessage("API Key is missing in environment variables.");
+      const msg = "API Key is missing in environment variables.";
+      setErrorMessage(msg);
+      addLog(`Error: ${msg}`);
       return;
     }
 
@@ -320,11 +338,12 @@ export const LiveTutor: React.FC<LiveTutorProps> = ({ onBack }) => {
         setIsConnecting(false);
         return;
     }
-    console.log("navigator.mediaDevices:", navigator.mediaDevices);
+    addLog("Requesting user media (mic/camera)...");
     const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: true, 
         video: true 
     });
+      addLog("Media permissions granted.");
       streamRef.current = stream;
 
       if (videoRef.current) {
@@ -367,11 +386,13 @@ writeNotes
         },
       };
 
+      addLog("Connecting to Gemini Live Socket...");
       const sessionPromise = ai.live.connect({
         ...config,
         callbacks: {
           onopen: () => {
             console.log("Gemini Live Socket Opened");
+            addLog("Connection successful!");
             sessionStartTimeRef.current = Date.now();
           },
           onmessage: async (msg: LiveServerMessage) => {
@@ -474,11 +495,13 @@ writeNotes
           },
           onclose: (e) => {
             console.log("Gemini Live Closed", e);
+            addLog("Socket closed.");
             handleDisconnect();
           },
           onerror: (err: any) => {
             console.error("Gemini Live Error Callback:", err);
             const msg = err.message || err.toString();
+            addLog(`Socket Error: ${msg}`);
             if (msg.includes("unavailable") || msg.includes("aborted") || msg.includes("disconnect")) {
                setErrorMessage("Service is temporarily unavailable. Please try again.");
                handleDisconnect();
@@ -497,12 +520,15 @@ writeNotes
       }).catch((err) => {
         console.error("Connection Failed:", err);
         setErrorMessage("Connection failed. Check console.");
+        addLog(`Error: Connection failed. ${err.message || ''}`);
         handleDisconnect();
       });
 
     } catch (error: any) {
       console.error("Session Start Error:", error);
-      setErrorMessage(error.message || "Failed to start session.");
+      const msg = error.message || "Failed to start session.";
+      setErrorMessage(msg);
+      addLog(`Error: ${msg}`);
       handleDisconnect();
     }
   };
@@ -531,11 +557,13 @@ writeNotes
   };
 
   const handleScreenShare = async () => {
+    addLog("Attempting to start screen share...");
     if (!isConnected) { alert("Please start the live session first."); return; }
 
     try {
       setErrorMessage(null);
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      addLog("Screen share permission granted.");
       screenStreamRef.current = stream;
       setIsScreenSharing(true);
 
@@ -548,8 +576,13 @@ writeNotes
       }
       stream.getVideoTracks()[0].onended = () => stopScreenShare();
     } catch (err: any) {
-      if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) return;
-      setErrorMessage("Failed to share screen.");
+      if (err.name === 'NotAllowedError' || err.message?.includes('Permission denied')) {
+        addLog("Screen share permission denied.");
+        return;
+      }
+      const msg = "Failed to share screen.";
+      setErrorMessage(msg);
+      addLog(`Error: ${msg}`);
     }
   };
 
@@ -581,6 +614,7 @@ writeNotes
   };
 
   const handleAutoDebug = async () => {
+    addLog("Attempting to auto-debug...");
     if (!screenCanvasRef.current) return;
     setIsDebugMode(true);
     setIsFixingCode(true);
@@ -592,8 +626,10 @@ writeNotes
         try {
           const result = await analyzeAndFixCode(base64, selectedLanguage);
           setFixedCodeResult(result);
+          addLog("Code analysis complete.");
         } catch(e) {
           setFixedCodeResult({ fixedCode: "// Failed to analyze", explanation: "Network error occurred." });
+          addLog(`Error during code analysis: ${e}`);
         } finally {
           setIsFixingCode(false);
         }
@@ -651,6 +687,7 @@ writeNotes
   };
 
   const handleGenerateVideo = async () => {
+    addLog("Attempting to generate video...");
     if (!videoPromptInput.trim()) return;
     try {
        const hasKey = await (window as any).aistudio?.hasSelectedApiKey();
@@ -665,23 +702,30 @@ writeNotes
     
     try {
        const ai = new GoogleGenAI({ apiKey: apiKey || '' });
+       addLog("Sending video generation request to AI...");
        let operation = await ai.models.generateVideos({
           model: 'veo-3.1-fast-generate-preview',
           prompt: `Educational animation explaining ${videoPromptInput}. Clear visuals, simple math diagrams. Language: ${selectedLanguage}.`,
           config: { numberOfVideos: 1, resolution: '720p', aspectRatio: '16:9' }
        });
+       addLog("Waiting for video generation to complete...");
        while (!operation.done) {
           await new Promise(r => setTimeout(r, 4000));
           operation = await ai.operations.getVideosOperation({operation});
        }
        const uri = operation.response?.generatedVideos?.[0]?.video?.uri;
        if (uri) {
+          addLog("Video generated. Fetching video URL...");
           const vidResp = await fetch(`${uri}&key=${apiKey}`);
           const blob = await vidResp.blob();
           setGeneratedVideoUrl(URL.createObjectURL(blob));
+          addLog("Video ready for playback.");
+       } else {
+          addLog("Video generation completed but no URI returned.");
        }
     } catch (e) {
        alert("Failed to generate video.");
+       addLog(`Error during video generation: ${e}`);
     } finally {
        setIsGeneratingVideo(false);
        setVideoPromptInput('');
@@ -691,14 +735,17 @@ writeNotes
   const whiteboardRef = useRef(null);
 
   const handleExplainDrawing = async () => {
+    addLog("Attempting to explain drawing...");
     if (whiteboardRef.current) {
       const shapes = whiteboardRef.current.getShapes();
       if (shapes.length === 0) {
         setExplanation("The whiteboard is empty. Please draw something to get an explanation.");
+        addLog("Error: Whiteboard is empty for explanation.");
         return;
       }
 
       setExplanation("Thinking...");
+      addLog("Sending drawing data to AI for explanation...");
 
       try {
         const genAI = new GoogleGenAI(apiKey || '');
@@ -710,9 +757,11 @@ writeNotes
         const response = result.response;
         const text = response.text();
         setExplanation(text);
+        addLog("Drawing explanation received.");
       } catch (error) {
         console.error("Error explaining drawing:", error);
         setExplanation("Sorry, I couldn't understand the drawing.");
+        addLog(`Error explaining drawing: ${error}`);
       }
     }
   };
@@ -927,7 +976,7 @@ writeNotes
         )}
 
         <div className="absolute bottom-6 right-6 w-48 h-36 bg-gray-800 rounded-xl overflow-hidden border-2 border-gray-700 shadow-lg transition-transform hover:scale-105 z-20">
-           <video ref={videoRef} autoPlay muted playsInline className={`w-full h-full object-cover mirror ${!isCameraOn ? 'hidden' : ''}`}/>
+           <video ref={(el) => { if (el && screenStreamRef.current) el.srcObject = screenStreamRef.current; }} autoPlay muted className="w-full h-full object-cover mirror"/>
            {!isCameraOn && <div className="w-full h-full flex items-center justify-center text-gray-500 bg-gray-800"><VideoOff className="w-8 h-8" /></div>}
         </div>
 
@@ -938,7 +987,7 @@ writeNotes
                 <input type="text" value={videoPromptInput} onChange={(e) => setVideoPromptInput(e.target.value)} placeholder="e.g. Pythagorean Theorem" className="w-full bg-gray-900 border border-gray-700 rounded-lg p-3 text-white mb-4"/>
                 <div className="flex justify-end space-x-3">
                    <button onClick={() => setShowVideoPrompt(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancel</button>
-                   <button onClick={handleGenerateVideo} disabled={!videoPromptInput.trim()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">Generate</button>
+                   <button onClick={handleGenerateVideo} disabled={isGeneratingVideo || !videoPromptInput.trim()} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg">{isGeneratingVideo ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Generate'}</button>
                 </div>
              </div>
           </div>
@@ -1003,7 +1052,7 @@ writeNotes
              <button onClick={handleDisconnect} className="px-8 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full flex items-center space-x-2"><PhoneOff className="w-5 h-5" /><span>End Call</span></button>
              <button onClick={() => setIsCameraOn(!isCameraOn)} className={`p-4 rounded-full ${isCameraOn ? 'bg-gray-700' : 'bg-red-500/20 text-red-500'}`}>{isCameraOn ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}</button>
              <div className="h-8 w-px bg-gray-700 mx-2"></div>
-             <button onClick={() => setIsWhiteboardOpen(!isWhiteboardOpen)} className={`p-4 rounded-full ${isWhiteboardOpen ? 'bg-blue-600 text-white' : 'bg-gray-700'}`}><PenTool className="w-6 h-6" /></button>
+             <button onClick={() => setIsWhiteboardOpen(!isWhiteboardOpen)} className={`p-4 rounded-full ${isWhiteboardOpen ? 'bg-blue-600 text-white' : 'bg-gray-700'}`}></button>
              <button onClick={isScreenSharing ? stopScreenShare : handleScreenShare} className={`p-4 rounded-full ${isScreenSharing ? 'bg-green-600 text-white' : 'bg-gray-700'}`}>{isScreenSharing ? <StopCircle className="w-6 h-6 animate-pulse" /> : <Monitor className="w-6 h-6" />}</button>
              <button onClick={() => setShowVideoPrompt(true)} disabled={isGeneratingVideo} className="p-4 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white">{isGeneratingVideo ? <Loader2 className="w-6 h-6 animate-spin" /> : <Clapperboard className="w-6 h-6" />}</button>
            </>
